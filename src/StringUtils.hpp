@@ -194,7 +194,7 @@ template <typename ... Args>
 
 //#######################################################################################
 //
-//                                  Finding Stuff
+//                                  Find
 //
 //#######################################################################################
 
@@ -208,6 +208,21 @@ template <typename ... Args>
     return hayStack.find(needle, startIndex);
 }
 
+[[nodiscard]] constexpr size_t findAnyOf(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
+{
+    return hayStack.find_first_of(needles, startIndex);
+}
+
+[[nodiscard]] constexpr size_t findAnyBut(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
+{
+    return hayStack.find_first_not_of(needles, startIndex);
+}
+
+//#######################################################################################
+//
+//                                  Find case insensitively
+//
+//#######################################################################################
 
 [[nodiscard]] constexpr size_t iFind(const std::string_view hayStack, const std::string_view needle, const size_t startIndex = 0)
 {
@@ -219,21 +234,9 @@ template <typename ... Args>
     return Detail::iFind(hayStack.data(), hayStack.size(), startIndex, needle);
 }
 
-
-
-[[nodiscard]] constexpr size_t findAnyOf(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
-{
-    return hayStack.find_first_of(needles, startIndex);
-}
-
 [[nodiscard]] constexpr size_t iFindAnyOf(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
 {
     return Detail::iFindAnyOf(hayStack.data(), hayStack.size(), startIndex, needles.data(), needles.size());
-}
-
-[[nodiscard]] constexpr size_t findAnyBut(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
-{
-    return hayStack.find_first_not_of(needles, startIndex);
 }
 
 [[nodiscard]] constexpr size_t iFindAnyBut(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
@@ -241,6 +244,60 @@ template <typename ... Args>
     return Detail::iFindAnyBut(hayStack.data(), hayStack.size(), startIndex, needles.data(), needles.size());
 }
 
+
+//#######################################################################################
+//
+//                                  Contains
+//
+//#######################################################################################
+
+
+[[nodiscard]] constexpr bool contains(std::string_view hayStack, const std::string_view needle)
+{
+    return find(hayStack, needle, 0) != INDEX_NOT_FOUND;
+}
+
+[[nodiscard]] constexpr bool containsAnyOf(std::string_view hayStack, const std::string_view needles)
+{
+    return findAnyOf(hayStack, needles, 0) != INDEX_NOT_FOUND;
+}
+
+[[nodiscard]] constexpr bool containsNoneOf(std::string_view hayStack, const std::string_view needles)
+{
+    return findAnyOf(hayStack, needles, 0) == INDEX_NOT_FOUND;
+}
+
+[[nodiscard]] constexpr bool containsOnly(std::string_view hayStack, const std::string_view needles)
+{
+    return findAnyBut(hayStack, needles, 0) == INDEX_NOT_FOUND;
+}
+
+//#######################################################################################
+//
+//                               Contains case insensitively
+//
+//#######################################################################################
+
+
+[[nodiscard]] constexpr bool iContains(std::string_view hayStack, const std::string_view needle)
+{
+    return iFind(hayStack, needle, 0) != INDEX_NOT_FOUND;
+}
+
+[[nodiscard]] constexpr bool iContainsAnyOf(std::string_view hayStack, const std::string_view needles)
+{
+    return iFindAnyOf(hayStack, needles, 0) != INDEX_NOT_FOUND;
+}
+
+[[nodiscard]] constexpr bool iContainsNoneOf(std::string_view hayStack, const std::string_view needles)
+{
+    return iFindAnyOf(hayStack, needles, 0) == INDEX_NOT_FOUND;
+}
+
+[[nodiscard]] constexpr bool iContainsOnly(std::string_view hayStack, const std::string_view needles)
+{
+    return iFindAnyBut(hayStack, needles, 0) == INDEX_NOT_FOUND;
+}
 
 
 
