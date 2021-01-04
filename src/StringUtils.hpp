@@ -220,7 +220,7 @@ template <typename ... Args>
 
 //#######################################################################################
 //
-//                                  Find case insensitively
+//                                  Find case insensitive
 //
 //#######################################################################################
 
@@ -274,7 +274,7 @@ template <typename ... Args>
 
 //#######################################################################################
 //
-//                               Contains case insensitively
+//                               Contains case insensitive
 //
 //#######################################################################################
 
@@ -299,17 +299,56 @@ template <typename ... Args>
     return iFindAnyBut(hayStack, needles, 0) == INDEX_NOT_FOUND;
 }
 
+//#######################################################################################
+//
+//                                      EndsWith
+//
+//#######################################################################################
 
 
-
-constexpr bool endsWith(std::string_view source, std::string_view suffix) noexcept
+[[nodiscard]] constexpr bool endsWith(std::string_view source, std::string_view suffix) noexcept
 {
     const size_t sourceLength = source.length();
     const size_t suffixLength = suffix.length();
     return sourceLength >= suffixLength && Detail::equals(suffix.data(), source.data() + (sourceLength - suffixLength), suffixLength);
 }
 
+[[nodiscard]] constexpr bool endsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
+{
+    const size_t sourceLength = source.length();
+    return sourceLength >= 1 && (Detail::findChar(suffixes.data(), suffixes.size(), source[sourceLength - 1] != nullptr));
+}
 
+[[nodiscard]] constexpr bool endsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
+{
+    return !endsWithAnyOf(source, suffixes);
+}
+
+
+//#######################################################################################
+//
+//                                      EndsWith case insensitive
+//
+//#######################################################################################
+
+
+[[nodiscard]] constexpr bool iEndsWith(std::string_view source, std::string_view suffix) noexcept
+{
+    const size_t sourceLength = source.length();
+    const size_t suffixLength = suffix.length();
+    return sourceLength >= suffixLength && Detail::iEquals(suffix.data(), source.data() + (sourceLength - suffixLength), suffixLength);
+}
+
+[[nodiscard]] constexpr bool iEndsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
+{
+    const size_t sourceLength = source.length();
+    return sourceLength >= 1 && (Detail::iFindChar(suffixes.data(), suffixes.size(), source[sourceLength - 1] != nullptr));
+}
+
+[[nodiscard]] constexpr bool iEndsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
+{
+    return !iEndsWithAnyOf(source, suffixes);
+}
 
 
 
