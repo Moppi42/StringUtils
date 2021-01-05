@@ -1,12 +1,5 @@
 #pragma once
 
-#include <cstring>
-#include <type_traits>
-#include <string>
-#include <string_view>
-#include <array>
-#include <optional>
-#include <vector>
 #include "StringUtilsPrivate.hpp"
 namespace StringUtils
 {
@@ -69,7 +62,7 @@ template <typename Separator>
 template <typename Delimiter, typename ... Args>
 [[nodiscard]] static inline std::string join(const Delimiter& delimiter, Args&& ... args) {
     if constexpr (std::disjunction_v<Detail::is_optional<Args>...>) { // contains any optionals
-        return Detail::joinOptional(delimiter, std::forward<Args>(args...));
+        return Detail::joinOptional(delimiter, std::forward<Args>(args)...);
     }
     else
     {
@@ -94,39 +87,91 @@ template <typename Delimiter, typename ... Args>
 */
 template <typename ... Args>
 [[nodiscard]] static inline std::string concat(Args&& ... args) {
-    return Detail::concat(std::forward<Args>(args));
+    return Detail::concat(std::forward<Args>(args)...);
 }
 
 
 /**
 * Checks, whether two strings are equal
-*    equals("abc", "abc") => true
-*    equals("Abc", "abc") => false
-*    equals("abc", "ab")  => false
-*    equals("", "")       => true
-*    equals("abc", "abd") => false
-*    equals("Abc", "")    => false
+*    equals("abc", "abc")   => true
+*    equals("Abc", "abc")   => false
+*    equals("abc", "ab")    => false
+*    equals("", "")         => true
+*    equals("abc", "abd")   => false
+*    equals("Abc", "")      => false
+*    equals("A", 'A')       => true
+*    equals('A', "A")       => true
+*    equals("a", 'A')       => false
+*    equals('a', "A")       => false
+*    equals('x', "")        => false
+*    equals("", 'x')        => false
+*    equals('X', 'X')       => true
+*    equals('A', 'a')       => false
 */
-[[nodiscard]] constexpr bool equals(std::string_view str1, std::string_view str2) {
+[[nodiscard]] constexpr bool equals(const std::string_view str1, const std::string_view str2) noexcept
+{
     return str1 == str2;
 }
 
+[[nodiscard]] constexpr bool equals(const char c1, const std::string_view str2) noexcept
+{
+    return (str2.size() == 1) && c1 == str2[0];
+}
+
+[[nodiscard]] constexpr bool equals(const std::string_view str1, const char c2) noexcept
+{
+    return (str1.size() == 1) && str1[0] == c2;
+}
+
+[[nodiscard]] constexpr bool equals(const char c1, const char c2) noexcept
+{
+    return c1 == c2;
+}
+
+
+
 /**
 * Checks, whether two strings are equal ignoring case
-*    iEquals("abc", "abc") => true
-*    iEquals("Abc", "abc") => true
-*    iEquals("ABC", "aBc") => true
-*    iEquals("Abc", "ab")  => false
-*    iEquals("", "")       => true
-*    iEquals("Abc", "Ab")  => false
-*    iEquals("Abc", "ABd") => false
-*    iEquals("Abc", "")    => false
+*    iEquals("abc", "abc")  => true
+*    iEquals("Abc", "abc")  => true
+*    iEquals("ABC", "aBc")  => true
+*    iEquals("Abc", "ab")   => false
+*    iEquals("", "")        => true
+*    iEquals("Abc", "Ab")   => false
+*    iEquals("Abc", "ABd")  => false
+*    iEquals("Abc", "")     => false
+*    iEquals("A", 'A')      => true
+*    iEquals('A', "A")      => true
+*    iEquals('A', 'A')      => true
+*    iEquals("a", 'A')      => true
+*    iEquals('a', "A")      => true
+*    iEquals('A', 'a')      => true
+*    iEquals('x', "")       => false
+*    iEquals("", 'x')       => false
+
 */
-[[nodiscard]] constexpr bool iEquals(std::string_view str1, std::string_view str2)
+[[nodiscard]] constexpr bool iEquals(const std::string_view str1, const std::string_view str2) noexcept
 {
     const size_t size = str1.size();
     return (size == str2.size() && Detail::iEquals(str1.data(), str2.data(), size));
 }
+
+[[nodiscard]] constexpr bool iEquals(const char c1, const std::string_view str2) noexcept
+{
+    return (str2.size() == 1) && Detail::charEqualsIgnoreCase(c1, str2[0]);
+}
+
+[[nodiscard]] constexpr bool iEquals(const std::string_view str1, const char c2) noexcept
+{
+    return (str1.size() == 1) && Detail::charEqualsIgnoreCase(str1[0], c2);
+}
+
+[[nodiscard]] constexpr bool iEquals(const char c1, const char c2) noexcept
+{
+    return Detail::charEqualsIgnoreCase(c1, c2);
+}
+
+
 
 /**
 * Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
@@ -198,22 +243,22 @@ template <typename ... Args>
 //
 //#######################################################################################
 
-[[nodiscard]] constexpr size_t find(const std::string_view hayStack, const std::string_view needle, const size_t startIndex)
+[[nodiscard]] constexpr size_t find(const std::string_view hayStack, const std::string_view needle, const size_t startIndex = 0) noexcept
 {
     return hayStack.find(needle, startIndex);
 }
 
-[[nodiscard]] constexpr size_t find(const std::string_view hayStack, const char needle, const size_t startIndex = 0)
+[[nodiscard]] constexpr size_t find(const std::string_view hayStack, const char needle, const size_t startIndex = 0) noexcept
 {
     return hayStack.find(needle, startIndex);
 }
 
-[[nodiscard]] constexpr size_t findAnyOf(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
+[[nodiscard]] constexpr size_t findAnyOf(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0) noexcept
 {
     return hayStack.find_first_of(needles, startIndex);
 }
 
-[[nodiscard]] constexpr size_t findAnyBut(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
+[[nodiscard]] constexpr size_t findAnyBut(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0) noexcept
 {
     return hayStack.find_first_not_of(needles, startIndex);
 }
@@ -224,22 +269,22 @@ template <typename ... Args>
 //
 //#######################################################################################
 
-[[nodiscard]] constexpr size_t iFind(const std::string_view hayStack, const std::string_view needle, const size_t startIndex = 0)
+[[nodiscard]] constexpr size_t iFind(const std::string_view hayStack, const std::string_view needle, const size_t startIndex = 0) noexcept
 {
     return Detail::iFind(hayStack.data(), hayStack.size(), startIndex, needle.data(), needle.size());
 }
 
-[[nodiscard]] constexpr size_t iFind(const std::string_view hayStack, const char needle, size_t startIndex = 0)
+[[nodiscard]] constexpr size_t iFind(const std::string_view hayStack, const char needle, size_t startIndex = 0) noexcept
 {
     return Detail::iFind(hayStack.data(), hayStack.size(), startIndex, needle);
 }
 
-[[nodiscard]] constexpr size_t iFindAnyOf(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
+[[nodiscard]] constexpr size_t iFindAnyOf(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0) noexcept
 {
     return Detail::iFindAnyOf(hayStack.data(), hayStack.size(), startIndex, needles.data(), needles.size());
 }
 
-[[nodiscard]] constexpr size_t iFindAnyBut(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0)
+[[nodiscard]] constexpr size_t iFindAnyBut(const std::string_view hayStack, const std::string_view needles, const size_t startIndex = 0) noexcept
 {
     return Detail::iFindAnyBut(hayStack.data(), hayStack.size(), startIndex, needles.data(), needles.size());
 }
@@ -252,22 +297,22 @@ template <typename ... Args>
 //#######################################################################################
 
 
-[[nodiscard]] constexpr bool contains(std::string_view hayStack, const std::string_view needle)
+[[nodiscard]] constexpr bool contains(const std::string_view hayStack, const std::string_view needle) noexcept
 {
-    return find(hayStack, needle, 0) != INDEX_NOT_FOUND;
+    return StringUtils::find(hayStack, needle, 0) != INDEX_NOT_FOUND;
 }
 
-[[nodiscard]] constexpr bool containsAnyOf(std::string_view hayStack, const std::string_view needles)
+[[nodiscard]] constexpr bool containsAnyOf(const std::string_view hayStack, const std::string_view needles) noexcept
 {
     return findAnyOf(hayStack, needles, 0) != INDEX_NOT_FOUND;
 }
 
-[[nodiscard]] constexpr bool containsNoneOf(std::string_view hayStack, const std::string_view needles)
+[[nodiscard]] constexpr bool containsNoneOf(const std::string_view hayStack, const std::string_view needles) noexcept
 {
     return findAnyOf(hayStack, needles, 0) == INDEX_NOT_FOUND;
 }
 
-[[nodiscard]] constexpr bool containsOnly(std::string_view hayStack, const std::string_view needles)
+[[nodiscard]] constexpr bool containsOnly(const std::string_view hayStack, const std::string_view needles) noexcept
 {
     return findAnyBut(hayStack, needles, 0) == INDEX_NOT_FOUND;
 }
@@ -279,22 +324,22 @@ template <typename ... Args>
 //#######################################################################################
 
 
-[[nodiscard]] constexpr bool iContains(std::string_view hayStack, const std::string_view needle)
+[[nodiscard]] constexpr bool iContains(const std::string_view hayStack, const std::string_view needle) noexcept
 {
     return iFind(hayStack, needle, 0) != INDEX_NOT_FOUND;
 }
 
-[[nodiscard]] constexpr bool iContainsAnyOf(std::string_view hayStack, const std::string_view needles)
+[[nodiscard]] constexpr bool iContainsAnyOf(const std::string_view hayStack, const std::string_view needles) noexcept
 {
     return iFindAnyOf(hayStack, needles, 0) != INDEX_NOT_FOUND;
 }
 
-[[nodiscard]] constexpr bool iContainsNoneOf(std::string_view hayStack, const std::string_view needles)
+[[nodiscard]] constexpr bool iContainsNoneOf(const std::string_view hayStack, const std::string_view needles) noexcept
 {
     return iFindAnyOf(hayStack, needles, 0) == INDEX_NOT_FOUND;
 }
 
-[[nodiscard]] constexpr bool iContainsOnly(std::string_view hayStack, const std::string_view needles)
+[[nodiscard]] constexpr bool iContainsOnly(const std::string_view hayStack, const std::string_view needles) noexcept
 {
     return iFindAnyBut(hayStack, needles, 0) == INDEX_NOT_FOUND;
 }
@@ -306,17 +351,17 @@ template <typename ... Args>
 //#######################################################################################
 
 
-[[nodiscard]] constexpr bool endsWith(std::string_view source, std::string_view suffix) noexcept
+[[nodiscard]] constexpr bool endsWith(const std::string_view source, const std::string_view suffix) noexcept
 {
     const size_t sourceLength = source.length();
     const size_t suffixLength = suffix.length();
     return sourceLength >= suffixLength && Detail::equals(suffix.data(), source.data() + (sourceLength - suffixLength), suffixLength);
 }
 
-[[nodiscard]] constexpr bool endsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
+[[nodiscard]] constexpr bool endsWithAnyOf(const std::string_view source, const std::string_view suffixes) noexcept
 {
     const size_t sourceLength = source.length();
-    return sourceLength >= 1 && (Detail::findChar(suffixes.data(), suffixes.size(), source[sourceLength - 1] != nullptr));
+    return sourceLength >= 1 && (Detail::findChar(suffixes.data(), suffixes.size(), source[sourceLength - 1]) != nullptr);
 }
 
 [[nodiscard]] constexpr bool endsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
@@ -342,7 +387,7 @@ template <typename ... Args>
 [[nodiscard]] constexpr bool iEndsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
 {
     const size_t sourceLength = source.length();
-    return sourceLength >= 1 && (Detail::iFindChar(suffixes.data(), suffixes.size(), source[sourceLength - 1] != nullptr));
+    return sourceLength >= 1 && (Detail::iFindChar(suffixes.data(), suffixes.size(), source[sourceLength - 1]) != nullptr);
 }
 
 [[nodiscard]] constexpr bool iEndsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
@@ -351,10 +396,32 @@ template <typename ... Args>
 }
 
 
+//#######################################################################################
+//
+//                                      StartsWith
+//
+//#######################################################################################
 
+/*
+[[nodiscard]] constexpr bool endsWith(std::string_view source, std::string_view suffix) noexcept
+{
+    const size_t sourceLength = source.length();
+    const size_t suffixLength = suffix.length();
+    return sourceLength >= suffixLength && Detail::equals(suffix.data(), source.data() , suffixLength);
+}
 
+[[nodiscard]] constexpr bool endsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
+{
+    const size_t sourceLength = source.length();
+    return sourceLength >= 1 && (Detail::findChar(suffixes.data(), suffixes.size(), source[sourceLength - 1] != nullptr));
+}
 
+[[nodiscard]] constexpr bool endsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
+{
+    return !endsWithAnyOf(source, suffixes);
+}
 
+*/
 
 
 
@@ -385,6 +452,17 @@ template <typename ... Args>
 }
 
 
+
+//#######################################################################################
+//
+//                                      toString
+//
+//#######################################################################################
+
+template <typename T>
+inline std::string toString(const T& value) {
+   return Detail::toString(value);
+}
 
 
 }  // namespace StringUtils

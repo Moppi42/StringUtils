@@ -1,5 +1,3 @@
-#pragma once
-
 #include <string>
 #include <string_view>
 #include <cstring>
@@ -7,8 +5,7 @@
 #include <optional>
 #include <array>
 #include <vector>
-
-
+#include <sstream>
 
 using uchar = unsigned char;
 
@@ -18,7 +15,8 @@ namespace StringUtils {
 }
 
 
-namespace StringUtils::Detail {
+namespace StringUtils {
+namespace Detail {
 /**
 * Helper for is_string_convertible
 */
@@ -29,7 +27,7 @@ using is_string_convertible_helper = std::integral_constant<bool,
     std::is_same_v<T, std::string> ||
     std::is_same_v<T, const char*> ||
     std::is_same_v<T, char*> ||
-    (std::is_array_v<T>&& std::is_same_v<std::remove_extent_t<T>, char>)
+    (std::is_array_v<T> && std::is_same_v<std::remove_extent_t<T>, char>)
 >;
 
 /**
@@ -39,7 +37,7 @@ template <typename T>
 using is_string_convertible = is_string_convertible_helper<std::decay_t<T>>;
 
 template<typename T>
-inline constexpr bool is_string_convertible = Detail::is_string_convertible<T>::value;
+inline constexpr bool is_string_convertible_v = Detail::is_string_convertible<T>::value;
 
 /**
 * Helper for is_optional
@@ -48,7 +46,7 @@ template <typename T, typename Enable = void>
 struct is_optional_helper : std::false_type {};
 
 template <typename T>
-struct is_optional_helper<std::optional<T> > : std::true_type {};
+struct is_optional_helper<std::optional<T>> : std::true_type {};
 
 /**
 * Determines whether a template parameter is std::optional
@@ -234,7 +232,7 @@ static constexpr inline auto makeSizesArray(const Args& ... args)
 * helper that accumulates all lengths in the given array (needed by join to determine the total size)
 */
 template <size_t N>
-static constexpr inline size_t totalSizeHelper(const std::array<size_t, N>& array)
+static constexpr inline size_t totalSizeHelper(const std::array<size_t, N>& array) noexcept
 {
     size_t totalSize = 0;
     for (size_t j = 0; j < N; ++j) {
@@ -245,29 +243,30 @@ static constexpr inline size_t totalSizeHelper(const std::array<size_t, N>& arra
 
 
 
-constexpr inline char charToUpperCase(char c)
+constexpr inline char charToUpperCase(char c) noexcept
 {
     const uchar c1 = static_cast<uchar>(c) - 'a';
     return (c1 <= 'z' - 'a') ? static_cast<char>(c1 + 'A') : c;
 }
 
-constexpr inline char charToLowerCase(const char c)
+constexpr inline char charToLowerCase(const char c) noexcept
 {
     const uchar c1 = static_cast<uchar>(c) - 'A';
     return (c1 <= ('Z' - 'A')) ? static_cast<char>(c1 + 'a') : c;
 }
 
-constexpr inline bool charEquals(const char c1, const char c2)
+constexpr inline bool charEquals(const char c1, const char c2) noexcept
 {
     return c1 == c2;
 }
 
-constexpr inline bool charEqualsIgnoreCase(const char c1, const char c2)
+constexpr inline bool charEqualsIgnoreCase(const char c1, const char c2) noexcept
 {
     return charToLowerCase(c1) == charToLowerCase(c2);
 }
 
-constexpr inline int compareCharIgnoreCase(const char c1, const char c2) {
+constexpr inline int compareCharIgnoreCase(const char c1, const char c2) noexcept
+{
     return charToLowerCase(c1) - charToLowerCase(c2);
 }
 
@@ -281,9 +280,9 @@ constexpr inline const char* findChar(const char* p, const size_t count, const c
 }
 
 /**
-* Searches for character ch case insensitively within the first count characters of the sequence pointed to by p. 
+* Searches for character ch case insensitively within the first count characters of the sequence pointed to by p.
 * A pointer to the first character in the range specified by [p, p + count) that compares case insensitively equal to ch,
-* or a null pointer if not found. 
+* or a null pointer if not found.
 * See also char_traits::find()
 */
 
@@ -375,7 +374,8 @@ constexpr inline size_t iFind(const char* hayStack, const size_t haySize, const 
 }
 
 
-constexpr inline size_t iFind(const char* hayStack, const size_t haySize, const size_t startIndex, const char* needle, const size_t needleSize) noexcept {
+constexpr inline size_t iFind(const char* hayStack, const size_t haySize, const size_t startIndex, const char* needle, const size_t needleSize) noexcept
+{
     if (needleSize > haySize || startIndex > haySize - needleSize)
     {
         return INDEX_NOT_FOUND;
@@ -406,31 +406,37 @@ class StringMatchHelper { // helper for findAny so we do not have O(n) instead o
 private:
     bool m_Marks[256] = {};
 public:
-    constexpr void mark(const char c) {
+    constexpr void mark(const char c)  noexcept
+    {
         m_Marks[static_cast<uchar>(c)] = true;
     }
 
-    constexpr void iMark(const char c) {
+    constexpr void iMark(const char c) noexcept
+    {
         m_Marks[static_cast<uchar>(charToLowerCase(c))] = true;
         m_Marks[static_cast<uchar>(charToUpperCase(c))] = true;
     }
 
-    constexpr void mark(const char* start, const char* const end) {
+    constexpr void mark(const char* start, const char* const end) noexcept
+    {
         for (; start != end; ++start) {
             mark(*start);
         }
     }
 
-    constexpr void iMark(const char* start, const char* const end) {
+    constexpr void iMark(const char* start, const char* const end) noexcept
+    {
         for (; start != end; ++start) {
             iMark(*start);
         }
     }
 
-    constexpr bool hasMatch(const char c) const {
+    constexpr bool hasMatch(const char c) const noexcept
+    {
         return m_Marks[static_cast<uchar>(c)];
     }
-    constexpr bool hasMatch(const uchar c) const {
+    constexpr bool hasMatch(const uchar c) const noexcept
+    {
         return m_Marks[c];
     }
 
@@ -455,7 +461,7 @@ constexpr inline StringMatchHelper generateStringMatchHelper(const char* const s
 * Finds the first occurrence of any of the chars in [needles, needles + needlesSize)
 * Uses a lookup array for the needles => O(n) instead of O(n^2)
 */
-constexpr size_t iFindAnyOf(const char* const hayStack, const size_t haySize, const size_t startIndex, const char * const needles, const size_t needlesSize) noexcept
+constexpr size_t iFindAnyOf(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
 {
     if (needlesSize != 0 && startIndex < haySize)
     {
@@ -476,7 +482,7 @@ constexpr size_t iFindAnyOf(const char* const hayStack, const size_t haySize, co
 * Implementation of string_view::find_first_of (MSVC implementation)
 * Keep around for C++11 compatibility
 */
-constexpr size_t findAnyOf(const char* const hayStack, const size_t haySize, const size_t startIndex, const char * const needles, const size_t needlesSize) noexcept
+constexpr size_t findAnyOf(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
 {
     if (needlesSize != 0 && startIndex < haySize)
     {
@@ -594,7 +600,7 @@ static inline std::string joinOptional(const Delimiter& delimiter, Args&& ... ar
     ((
         isFirst = Detail::joinOptionalCopyHelper(isFirst, args, sizes[index], delimiter, delimiterSize, copyDestination),
         ++index
-     ), ...);
+    ), ...);
     return result;
 }
 
@@ -627,7 +633,7 @@ static inline std::string concat(Args&& ... args)
 
 
 
-inline std::vector<std::string> splitWithEmptySeparatorKeepEmptyParts(std::string_view source) noexcept
+inline std::vector<std::string> splitWithEmptySeparatorKeepEmptyParts(std::string_view source)
 {
     const size_t sourceLength = source.length();
     std::vector<std::string> list(sourceLength + 1, std::string(1, '?'));
@@ -639,7 +645,7 @@ inline std::vector<std::string> splitWithEmptySeparatorKeepEmptyParts(std::strin
     return list;
 }
 
-inline std::vector<std::string> splitWithEmptySeparatorSkipEmptyParts(std::string_view source) noexcept
+inline std::vector<std::string> splitWithEmptySeparatorSkipEmptyParts(std::string_view source)
 {
     const size_t sourceLength = source.length();
     std::vector<std::string> list(sourceLength, std::string(1, '?'));
@@ -650,7 +656,7 @@ inline std::vector<std::string> splitWithEmptySeparatorSkipEmptyParts(std::strin
     return list;
 }
 
-inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, std::string_view separator) noexcept
+inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, std::string_view separator)
 {
     const size_t separatorSize = separator.size();
     if (separatorSize == 0)
@@ -674,7 +680,7 @@ inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, std
 }
 
 
-inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, std::string_view separator) noexcept
+inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, std::string_view separator)
 {
     const size_t separatorSize = separator.size();
     if (separatorSize == 0)
@@ -703,7 +709,7 @@ inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, std
     return list;
 }
 
-inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, char separator) noexcept
+inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, char separator)
 {
     std::vector<std::string> list;
     for (;;)
@@ -722,7 +728,7 @@ inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, cha
 }
 
 
-inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, char separator) noexcept
+inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, char separator)
 {
     std::vector<std::string> list;
     for (;;)
@@ -747,18 +753,137 @@ inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, cha
 }
 
 
+} // namespace Detail
+
+
+    //#######################################################################################
+    //
+    //                                      toString
+    //
+    //#######################################################################################
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+namespace Custom
+{ // Namespace for custom implementation of toString (e.g. vector or other classes) that must be done outside the class
+    template<typename T>
+    struct toStringImpl {};
 }
+
+namespace Detail
+{
+
+namespace TypeTraits
+{
+
+    // void_t workaround taken from https://en.cppreference.com/w/cpp/types/void_t
+    template<typename... Ts> struct make_void { typedef void type; };
+    template<typename... Ts> using void_t = typename make_void<Ts...>::type;
+
+    // Struct nonesuch taken from https://en.cppreference.com/w/cpp/experimental/nonesuch
+    struct nonesuch
+    {
+        ~nonesuch() = delete;
+        nonesuch(nonesuch const&) = delete;
+        void operator=(nonesuch const&) = delete;
+    };
+
+    // std::experimental::is_detected implementation taken and adjusted from https://en.cppreference.com/w/cpp/experimental/is_detected
+    template <class Default, class AlwaysVoid,
+        template<class...> class Op, class... Args>
+    struct detector
+    {
+        using value_t = std::false_type;
+        using type = Default;
+    };
+
+    template <class Default, template<class...> class Op, class... Args>
+    struct detector<Default, void_t<Op<Args...>>, Op, Args...>
+    {
+        using value_t = std::true_type;
+        using type = Op<Args...>;
+    };
+
+    template <template<class...> class Op, class... Args>
+    using is_detected = typename TypeTraits::detector<TypeTraits::nonesuch, void, Op, Args...>::value_t;
+
+} // namespace TypeTraits
+
+
+
+    template<class T>
+    using stringstream_operator_t = decltype(std::declval<std::ostringstream>() << std::declval<T>());
+
+    // TODO check if return type is std::string (or convertible to string)
+    template<class T>
+    using custom_toString_member_t = decltype(std::declval<T>().toString());
+
+    // TODO check if return type is std::string (or convertible to string)
+    template <class T>
+    using custom_toString_t = decltype(std::declval<StringUtils::Custom::toStringImpl<T>>().operator()(std::declval<T>()));
+
+
+    // returns a string that contains the bytes of the object (this is the default behavior for toString of no other overload is found)
+    template <typename T>
+    inline std::string toHexBytesString(const T& value)
+    { // TODO: Benchmark array version vs std::string(sizeof(T) * 2, char{}) version (memset vs memcpy)
+        static constexpr auto chars = "0123456789ABCDEF";
+        std::array<char, sizeof(T) * 2> result;
+
+        const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&value);
+        const uint8_t* end = bytes + sizeof(T);
+        char* destination = &result[0];
+        for (; bytes != end; ++bytes) {
+            *destination = chars[(*bytes >> 4) & 0x0F];
+            ++destination;
+            *destination = chars[*bytes & 0x0F];
+            ++destination;
+        }
+        return std::string(result.data(), sizeof(T) * 2);
+    }
+
+    // overload for custom implementations outside of class (TODO check if is possible to overload StringUtils builtins )
+    template <typename T,
+              typename std::enable_if<TypeTraits::is_detected<custom_toString_t, T>::value, bool>::type = true>
+    inline std::string toString(const T & value)
+    {
+        constexpr Custom::toStringImpl<T> impl;
+        return impl(value);
+    }
+
+    // overload for custom implementations in form of a toString method inside the class
+    template <typename T,
+              typename std::enable_if<!TypeTraits::is_detected<custom_toString_t, T>::value
+                                   &&  TypeTraits::is_detected<custom_toString_member_t, T>::value, bool>::type = true>
+    inline std::string toString(const T & value)
+    {
+        return value.toString();
+    }
+    // overload for types that have an ostream operator << if there is no custom implementation
+    template <typename T,
+              typename std::enable_if<!TypeTraits::is_detected<custom_toString_t, T>::value
+                                   && !TypeTraits::is_detected<custom_toString_member_t, T>::value
+                                   &&  TypeTraits::is_detected<stringstream_operator_t, T>::value, bool>::type = true>
+    inline std::string toString(const T & value)
+    {
+        std::ostringstream stream;
+        stream << value;
+        return stream.str();
+    }
+
+    // overload for types that are not caught by custom implementations, stringstream and builtIn implementations
+    template <typename T,
+              typename std::enable_if<!TypeTraits::is_detected<custom_toString_t, T>::value
+                                   && !TypeTraits::is_detected<custom_toString_member_t, T>::value
+                                   && !TypeTraits::is_detected<stringstream_operator_t, T>::value, bool>::type = true>
+    inline std::string toString(const T & value)
+    {
+        return toHexBytesString(value);
+    }
+
+    // TODO: explicit enable_if for builtin functions ( maybe even an extra method builtInToString???? )
+    // Maybe that way we can have a builtIn toString function and a custom one
+
+} // namespace Detail
+
+} // namespace StringUilts
