@@ -1,22 +1,14 @@
-#pragma once
-
 #include "StringUtilsPrivate.hpp"
-namespace StringUtils
-{
-enum SplitBehavior
-{
+namespace StringUtils {
+enum SplitBehavior {
     SKIP_EMPTY_PARTS,
     KEEP_EMPTY_PARTS
 };
 
-enum CaseSensitivity
-{
+enum CaseSensitivity {
     CASE_INSENSITIVE,
     CASE_SENSITIVE
 };
-
-
-
 
 
 /**
@@ -35,8 +27,9 @@ enum CaseSensitivity
 *   join('\0', "abc", "def")        => "abc\0def"
 *   join('|', "abc", '\0', "def")   => "abc|\0|def"
 */
-template <typename Separator>
-[[nodiscard]] static inline std::string join(const Separator&) {
+template<typename Separator>
+[[nodiscard]] static inline std::string join(const Separator&)
+{
     return std::string();
 }
 
@@ -59,12 +52,13 @@ template <typename Separator>
 *   join('|', "abc", std::nullopt, "def")       => "abc|def"
 *   join('|', std::nullopt, std::nullopt)       => ""
 */
-template <typename Delimiter, typename ... Args>
-[[nodiscard]] static inline std::string join(const Delimiter& delimiter, Args&& ... args) {
-    if constexpr (std::disjunction_v<Detail::is_optional<Args>...>) { // contains any optionals
+template<typename Delimiter, typename... Args>
+[[nodiscard]] static inline std::string join(const Delimiter& delimiter, Args&&... args)
+{
+    if constexpr (std::disjunction_v<Detail::is_optional<Args>...>)
+    { // contains any optionals
         return Detail::joinOptional(delimiter, std::forward<Args>(args)...);
-    }
-    else
+    } else
     {
         return Detail::join(delimiter, std::forward<Args>(args)...);
     }
@@ -85,8 +79,9 @@ template <typename Delimiter, typename ... Args>
 *   concat("abc", std::nullopt, "def")          => "abcdef"
 *   concat(std::nullopt, std::nullopt)          => ""
 */
-template <typename ... Args>
-[[nodiscard]] static inline std::string concat(Args&& ... args) {
+template<typename... Args>
+[[nodiscard]] static inline std::string concat(Args&&... args)
+{
     return Detail::concat(std::forward<Args>(args)...);
 }
 
@@ -127,7 +122,6 @@ template <typename ... Args>
 {
     return c1 == c2;
 }
-
 
 
 /**
@@ -172,7 +166,6 @@ template <typename ... Args>
 }
 
 
-
 /**
 * Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
 * If separator is not found in source a single-element list containing source is returned.
@@ -197,8 +190,7 @@ template <typename ... Args>
     if (splitBehavior == SplitBehavior::KEEP_EMPTY_PARTS)
     {
         return Detail::splitKeepEmptyParts(source, separator);
-    }
-    else
+    } else
     {
         return Detail::splitSkipEmptyParts(source, separator);
     }
@@ -227,14 +219,11 @@ template <typename ... Args>
     if (splitBehavior == SplitBehavior::KEEP_EMPTY_PARTS)
     {
         return Detail::splitKeepEmptyParts(source, separator);
-    }
-    else
+    } else
     {
         return Detail::splitSkipEmptyParts(source, separator);
     }
 }
-
-
 
 
 //#######################################################################################
@@ -402,27 +391,49 @@ template <typename ... Args>
 //
 //#######################################################################################
 
-/*
-[[nodiscard]] constexpr bool endsWith(std::string_view source, std::string_view suffix) noexcept
+
+[[nodiscard]] constexpr bool startsWith(std::string_view source, std::string_view suffix) noexcept
 {
     const size_t sourceLength = source.length();
     const size_t suffixLength = suffix.length();
-    return sourceLength >= suffixLength && Detail::equals(suffix.data(), source.data() , suffixLength);
+    return sourceLength >= suffixLength && Detail::equals(suffix.data(), source.data(), suffixLength);
 }
 
-[[nodiscard]] constexpr bool endsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
+[[nodiscard]] constexpr bool startsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
 {
     const size_t sourceLength = source.length();
-    return sourceLength >= 1 && (Detail::findChar(suffixes.data(), suffixes.size(), source[sourceLength - 1] != nullptr));
+    return sourceLength >= 1 && (Detail::findChar(suffixes.data(), suffixes.size(), source[0]) != nullptr);
 }
 
-[[nodiscard]] constexpr bool endsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
+[[nodiscard]] constexpr bool startsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
 {
-    return !endsWithAnyOf(source, suffixes);
+    return !startsWithAnyOf(source, suffixes);
 }
 
-*/
 
+//#######################################################################################
+//
+//                                      StartsWith case insensitive
+//
+//#######################################################################################
+
+[[nodiscard]] constexpr bool iStartsWith(std::string_view source, std::string_view suffix) noexcept
+{
+    const size_t sourceLength = source.length();
+    const size_t suffixLength = suffix.length();
+    return sourceLength >= suffixLength && Detail::iEquals(suffix.data(), source.data(), suffixLength);
+}
+
+[[nodiscard]] constexpr bool iStartsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
+{
+    const size_t sourceLength = source.length();
+    return sourceLength >= 1 && (Detail::iFindChar(suffixes.data(), suffixes.size(), source[0]) != nullptr);
+}
+
+[[nodiscard]] constexpr bool iStartsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
+{
+    return !iStartsWithNoneOf(source, suffixes);
+}
 
 
 /**
@@ -433,7 +444,7 @@ template <typename ... Args>
 *   leftView("123456789", 0)        => ""
 *   leftView("1234567890", 11)      => "1234567890"
 */
-[[nodiscard]] constexpr std::string_view leftView(std::string_view str, size_t n) { return str.substr(0, n); }
+[[nodiscard]] constexpr std::string_view leftView(std::string_view str, size_t n) noexcept { return str.substr(0, n); }
 
 
 /**
@@ -444,13 +455,13 @@ template <typename ... Args>
 *   rightView("123456789", 0)        => ""
 *   rightView("1234567890", 11)      => "1234567890"
 */
-[[nodiscard]] constexpr std::string_view rightView(std::string_view str, size_t n) {
+[[nodiscard]] constexpr std::string_view rightView(std::string_view str, size_t n) noexcept
+{
     const size_t strLength = str.length();
     const size_t length = std::min(n, strLength);
     str.remove_prefix(strLength - length);
     return str;
 }
-
 
 
 //#######################################################################################
@@ -459,10 +470,11 @@ template <typename ... Args>
 //
 //#######################################################################################
 
-template <typename T>
-inline std::string toString(const T& value) {
-   return Detail::toString(value);
+template<typename T>
+inline std::string toString(const T& value)
+{
+    return Detail::toString(value);
 }
 
 
-}  // namespace StringUtils
+} // namespace StringUtils
