@@ -1,11 +1,13 @@
 #include "StringUtilsPrivate.hpp"
 namespace StringUtils {
-enum SplitBehavior {
+enum SplitBehavior
+{
     SKIP_EMPTY_PARTS,
     KEEP_EMPTY_PARTS
 };
 
-enum CaseSensitivity {
+enum CaseSensitivity
+{
     CASE_INSENSITIVE,
     CASE_SENSITIVE
 };
@@ -49,16 +51,43 @@ template<typename Separator>
 *   join('\0', "abc", "def")                    => "abc\0def"
 *   join('|', "abc", '\0', "def")               => "abc|\0|def"
 *   join('|', std::make_optional("abc"), "def") => "abc|def"
-*   join('|', "abc", std::nullopt, "def")       => "abc|def"
-*   join('|', std::nullopt, std::nullopt)       => ""
+*   join('|', "abc", std::nullopt, "def")       => "abc||def"
+*   join('|', std::nullopt, std::nullopt)       => "||"
 */
 template<typename Delimiter, typename... Args>
 [[nodiscard]] static inline std::string join(const Delimiter& delimiter, Args&&... args)
 {
+    return Detail::join(delimiter, std::forward<Args>(args)...);
+}
+
+
+/**
+* Joins the strings passed in as parameters into a single string separated by the delimiter.
+* Discards any optionals that have no value, resulting in no separator
+* If no optionals are present the behaviour is the same as StringUtils::join
++   joinOptional('|', "abc")                            => "abc"
+*   joinOptional('|')                                   => ""
+*   joinOptional('|', "", "")                           => "|"
+*   joinOptional('|', "abc", "def", 'x')                => "abc|def|x"
+*   joinOptional("| ", 'x', 'y', 'z')                   => "x| y| z"
+*   joinOptional('|', "abc", "def", "ghij")             => "abc|def|ghij"
+*   joinOptional("abc", "def", "ghij")                  => "defabcghij"
+*   joinOptional("||\000||", "abc", "def")              => "abc||def"
+*   joinOptional('|', "abc", "def\000ghi")              => "abc|def"
+*   joinOptional('\0', "abc", "def")                    => "abc\0def"
+*   joinOptional('|', "abc", '\0', "def")               => "abc|\0|def"
+*   joinOptional('|', std::make_optional("abc"), "def") => "abc|def"
+*   joinOptional('|', "abc", std::nullopt, "def")       => "abc|def"
+*   joinOptional('|', std::nullopt, std::nullopt)       => ""
+*/
+template<typename Delimiter, typename... Args>
+[[nodiscard]] static inline std::string joinOptional(const Delimiter& delimiter, Args&&... args)
+{
     if constexpr (std::disjunction_v<Detail::is_optional<Args>...>)
     { // contains any optionals
         return Detail::joinOptional(delimiter, std::forward<Args>(args)...);
-    } else
+    }
+    else
     {
         return Detail::join(delimiter, std::forward<Args>(args)...);
     }
@@ -190,7 +219,8 @@ template<typename... Args>
     if (splitBehavior == SplitBehavior::KEEP_EMPTY_PARTS)
     {
         return Detail::splitKeepEmptyParts(source, separator);
-    } else
+    }
+    else
     {
         return Detail::splitSkipEmptyParts(source, separator);
     }
@@ -219,7 +249,8 @@ template<typename... Args>
     if (splitBehavior == SplitBehavior::KEEP_EMPTY_PARTS)
     {
         return Detail::splitKeepEmptyParts(source, separator);
-    } else
+    }
+    else
     {
         return Detail::splitSkipEmptyParts(source, separator);
     }
@@ -471,10 +502,42 @@ template<typename... Args>
 //#######################################################################################
 
 template<typename T>
-inline std::string toString(const T& value)
+[[nodiscard]] inline std::string toString(const T& value)
 {
     return Detail::toString(value);
 }
 
+
+//#######################################################################################
+//
+//                                      trim
+//
+//#######################################################################################
+
+
+
+
+[[nodiscard]] inline std::string_view rTrimAnyOf(std::string_view str, std::string_view trimChars = " \n\r\f\t")
+{
+    const size_t end = str.find_last_not_of(trimChars) + 1;
+    str.remove_suffix(str.size() - end);
+    return str;
+}
+
+[[nodiscard]] inline std::string_view lTrimAnyOf(std::string_view str, std::string_view trimChars = " \n\r\f\t")
+{
+    const size_t start = str.find_first_not_of(trimChars);
+    str.remove_prefix(std::min(str.size(), start));
+    return str;
+}
+
+[[nodiscard]] inline std::string_view trimAnyOf(std::string_view str, std::string_view trimChars = " \n\r\f\t")
+{
+    const size_t start = str.find_first_not_of(trimChars);
+    str.remove_prefix(std::min(str.size(), start));
+    const size_t end = str.find_last_not_of(trimChars) + 1;
+    str.remove_suffix(str.size() - end);
+    return str;
+}
 
 } // namespace StringUtils

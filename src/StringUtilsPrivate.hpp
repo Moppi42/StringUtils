@@ -1,13 +1,3 @@
-#include <string>
-#include <string_view>
-#include <cstring>
-#include <type_traits>
-#include <optional>
-#include <array>
-#include <vector>
-#include <sstream>
-
-
 #if defined(__clang__)
 #    define STRINGUTILS_CLANG_COMPILER
 #elif defined(__GNUC__) || defined(__GNUG__)
@@ -15,9 +5,83 @@
 #elif defined(_MSC_VER)
 #    define STRINGUTILS_MSVC_COMPILER
 #else
-#    error("Detected Unknown compiler")
+#    pragma message("Detected none of Gcc, Clang or Msvc: hopefully it works")
 #endif
 
+#if !defined(STRINGUTILS_HAS_CXX17) && !defined(STRINGUTILS_HAS_CXX14) && !defined(STRINGUTILS_HAS_CXX11)
+#    if defined(STRINGUTILS_MSVC_COMPILER)
+#        define STRINGUTILS_STL_LANG _MSVC_LANG
+#    else
+#        define STRINGUTILS_STL_LANG __cplusplus
+#    endif
+
+#    if STRINGUTILS_STL_LANG >= 202002L
+#        define STRINGUTILS_HAS_CXX20 1
+#        define STRINGUTILS_HAS_CXX17 1
+#        define STRINGUTILS_HAS_CXX14 1
+#        define STRINGUTILS_HAS_CXX11 1
+#    elif STRINGUTILS_STL_LANG >= 201703L
+#        define STRINGUTILS_HAS_CXX20 0
+#        define STRINGUTILS_HAS_CXX17 1
+#        define STRINGUTILS_HAS_CXX14 1
+#        define STRINGUTILS_HAS_CXX11 1
+#    elif STRINGUTILS_STL_LANG >= 201402L
+#        define STRINGUTILS_HAS_CXX20 0
+#        define STRINGUTILS_HAS_CXX17 0
+#        define STRINGUTILS_HAS_CXX14 1
+#        define STRINGUTILS_HAS_CXX11 1
+#    elif STRINGUTILS_STL_LANG >= 201103L
+#        define STRINGUTILS_HAS_CXX20 0
+#        define STRINGUTILS_HAS_CXX17 0
+#        define STRINGUTILS_HAS_CXX14 0
+#        define STRINGUTILS_HAS_CXX11 1
+#    else // _STL_LANG <= 201103L
+#        error "StringUtils require at least C++11"
+#    endif
+
+#    undef STRINGUTILS_STL_LANG
+
+#    define STRING2(x) #    x
+#    define STRING(x) STRING2(x)
+
+
+#    ifdef STRINGUTILS_CLANG_COMPILER
+#        pragma message("Detected Clang " STRING(__clang_major__) "." STRING(__clang_minor__) "." STRING(__clang_patchlevel__))
+static_assert(__clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 9), "Clang below 3.9.0 not supported");
+#    endif
+
+#    ifdef STRINGUTILS_GNU_COMPILER
+#        pragma message("Detected GCC " STRING(__GNUC__) "." STRING(__GNUC_MINOR__) "." STRING(__GNUC_PATCHLEVEL__))
+static_assert(__GNUC__ >= 7 && __GNUC_MINOR__ >= 1, "GCC below 7.1 not supported");
+#    endif
+
+#    ifdef STRINGUTILS_MSVC_COMPILER
+#        pragma message("Detected MSVC " STRING(_MSC_VER))
+static_assert(_MSC_VER >= 1915, "MSVC is not supported for versions below 19.15");
+#    endif
+
+
+#    undef STRING
+#    undef STRING2
+
+#endif
+
+
+#include <string>
+#include <cstring>
+#include <type_traits>
+#include <array>
+#include <vector>
+
+
+#ifndef STRINGUTILS_NO_STRINGSTREAM
+#    include <sstream>
+#endif
+
+#if STRINGUTILS_HAS_CXX17
+#    include <string_view>
+#    include <optional>
+#endif
 
 using uchar = unsigned char;
 
@@ -175,7 +239,8 @@ static inline bool joinOptionalCopyHelper(const bool isFirst, const T& source, s
     {
         Detail::copyToString(source, sourceLength, copyDestination);
         copyDestination += sourceLength;
-    } else
+    }
+    else
     {
         Detail::copyToString(delimiter, delimiterSize, copyDestination),
             Detail::copyToString(source, sourceLength, copyDestination + delimiterSize),
@@ -193,7 +258,8 @@ static inline bool joinOptionalCopyHelper(const bool isFirst, const std::optiona
     if (source.has_value())
     {
         return Detail::joinOptionalCopyHelper(isFirst, source.value(), sourceLength, delimiter, delimiterSize, copyDestination);
-    } else
+    }
+    else
     {
         return isFirst;
     }
@@ -813,6 +879,12 @@ struct make_void
 template<typename... Ts>
 using void_t = typename make_void<Ts...>::type;
 
+template<class T>
+struct AlwaysFalse: std::false_type
+{
+};
+
+
 // Struct nonesuch taken from https://en.cppreference.com/w/cpp/experimental/nonesuch
 struct nonesuch
 {
@@ -841,11 +913,18 @@ using is_detected = typename TypeTraits::detector<TypeTraits::nonesuch, void, Op
 
 } // namespace TypeTraits
 
+#ifndef STRINGUTILS_NO_STRINGSTREAM
 template<class T>
 using stringstream_operator_t = decltype(std::declval<std::ostringstream>() << std::declval<T>());
 
 template<class T>
 using has_stringstream_operator = TypeTraits::is_detected<stringstream_operator_t, T>;
+
+#else
+
+template<class T>
+using has_stringstream_operator = std::false_type;
+#endif
 
 // TODO check if return type is std::string (or convertible to string)
 template<class T>
@@ -869,26 +948,23 @@ template<class T>
 using has_builtIn_toString = TypeTraits::is_detected<builtIn_toString_t, T>;
 
 
-// returns a string that contains the bytes of the object (this is the default behavior for toString of no other overload is found)
 template<typename T>
 inline std::string toHexBytesString(const T& value)
-{ // TODO: Benchmark array version vs std::string(sizeof(T) * 2, char{}) version (memset vs memcpy)
+{
     static constexpr auto chars = "0123456789ABCDEF";
-    std::array<char, sizeof(T) * 2> result;
 
+    std::string result(sizeof(T) * 2, char{});
     const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&value);
-    const uint8_t* end = bytes + sizeof(T);
+    const uint8_t* const end = bytes + sizeof(T);
     char* destination = &result[0];
     for (; bytes != end; ++bytes)
     {
         *destination = chars[(*bytes >> 4) & 0x0F];
-        ++destination;
-        *destination = chars[*bytes & 0x0F];
-        ++destination;
+        *(destination + 1) = chars[*bytes & 0x0F];
+        destination += 2;
     }
-    return std::string(result.data(), sizeof(T) * 2);
+    return result;
 }
-
 
 // overload for custom implementations outside of class (TODO check if is possible to overload StringUtils builtins )
 template<typename T,
@@ -920,6 +996,8 @@ inline std::string toString(const T& value)
     return impl(value);
 }
 
+
+#ifndef STRINGUTILS_NO_STRINGSTREAM
 // overload for types that have an ostream operator << if there is no custom nor builtin implementation
 template<typename T,
     typename std::enable_if<!has_custom_toString<T>::value
@@ -930,10 +1008,13 @@ template<typename T,
 inline std::string toString(const T& value)
 {
     std::ostringstream stream;
-    stream << "Stream: " << value;
+    stream << value;
     return stream.str();
 }
+#endif
 
+
+#ifndef STRINGUTILS_NO_DEFAULT_TOSTRING
 // overload for types that are not caught by custom implementations, stringstream and builtIn implementations
 template<typename T,
     typename std::enable_if<!has_custom_toString<T>::value
@@ -945,7 +1026,20 @@ inline std::string toString(const T& value)
 {
     return toHexBytesString(value);
 }
+#else
 
+template<typename T,
+    typename std::enable_if<!has_custom_toString<T>::value
+                                && !has_custom_toString_member<T>::value
+                                && !has_builtIn_toString<T>::value
+                                && !has_stringstream_operator<T>::value,
+        bool>::type = true>
+inline std::string toString(const T& value)
+{
+    static_assert(TypeTraits::AlwaysFalse<T>::value, "Failed to find suitable overload for toString");
+    return "";
+}
+#endif
 
 // TODO: explicit enable_if for builtin functions ( maybe even an extra method builtInToString???? )
 // Maybe that way we can have a builtIn toString function and a custom one
