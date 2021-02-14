@@ -1,5 +1,9 @@
+#ifndef STRINGUTILS_HPP
+#define STRINGUTILS_HPP
+
+
 #include "StringUtilsPrivate.hpp"
-namespace StringUtils {
+namespace STRINGUTILS_NAMESPACE {
 enum SplitBehavior
 {
     SKIP_EMPTY_PARTS,
@@ -13,32 +17,20 @@ enum CaseSensitivity
 };
 
 
-/**
-* Joins the strings passed in as parameters into a single string separated by the delimiter.
-* If you don't want a delimiter prefer StringUtils::concat over "" as separator.
-* Note: zero-termination characters can only be passed in in form of a single character.
-*   join('|', "abc")                => "abc"
-*   join('|')                       => ""
-*   join('|', "", "")               => "|"
-*   join('|', "abc", "def", 'x')    => "abc|def|x"
-*   join("| ", 'x', 'y', 'z')       => "x| y| z"
-*   join('|', "abc", "def", "ghij") => "abc|def|ghij"
-*   join("abc", "def", "ghij")      => "defabcghij"
-*   join("||\000||", "abc", "def")  => "abc||def"
-*   join('|', "abc", "def\000ghi")  => "abc|def"
-*   join('\0', "abc", "def")        => "abc\0def"
-*   join('|', "abc", '\0', "def")   => "abc|\0|def"
-*/
-template<typename Separator>
-[[nodiscard]] static inline std::string join(const Separator&)
-{
-    return std::string();
-}
+constexpr auto asciiLowerCase = "abcdefghijklmnopqrstuvwxyz";
+constexpr auto asciiUpperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+constexpr auto asciiLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+constexpr auto whitespace = " \t\n\r\v\f";
+constexpr auto digits = "0123456789";
+constexpr auto hexDigits = "0123456789abcdefABCDEF";
+constexpr auto octDigits = "01234567";
+constexpr auto punctuation = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+constexpr auto printable = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \t\n\r\v\f!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
 
 /**
 * Joins the strings passed in as parameters into a single string separated by the delimiter.
-* If you don't want a delimiter prefer StringUtils::concat over an empty separator.
-* Note: zero-termination characters can only be passed in in form of a single character.
+* If you don't want a delimiter prefer StringUtils::concat over join with an empty separator.
 *   join('|', "abc")                            => "abc"
 *   join('|')                                   => ""
 *   join('|', "", "")                           => "|"
@@ -319,7 +311,7 @@ template<typename... Args>
 
 [[nodiscard]] constexpr bool contains(const std::string_view hayStack, const std::string_view needle) noexcept
 {
-    return StringUtils::find(hayStack, needle, 0) != INDEX_NOT_FOUND;
+    return STRINGUTILS_NAMESPACE::find(hayStack, needle, 0) != INDEX_NOT_FOUND;
 }
 
 [[nodiscard]] constexpr bool containsAnyOf(const std::string_view hayStack, const std::string_view needles) noexcept
@@ -423,22 +415,22 @@ template<typename... Args>
 //#######################################################################################
 
 
-[[nodiscard]] constexpr bool startsWith(std::string_view source, std::string_view suffix) noexcept
+[[nodiscard]] constexpr bool startsWith(std::string_view source, std::string_view prefix) noexcept
 {
     const size_t sourceLength = source.length();
-    const size_t suffixLength = suffix.length();
-    return sourceLength >= suffixLength && Detail::equals(suffix.data(), source.data(), suffixLength);
+    const size_t prefixLength = prefix.length();
+    return sourceLength >= prefixLength && Detail::equals(prefix.data(), source.data(), prefixLength);
 }
 
-[[nodiscard]] constexpr bool startsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
+[[nodiscard]] constexpr bool startsWithAnyOf(std::string_view source, std::string_view prefixes) noexcept
 {
     const size_t sourceLength = source.length();
-    return sourceLength >= 1 && (Detail::findChar(suffixes.data(), suffixes.size(), source[0]) != nullptr);
+    return sourceLength >= 1 && (Detail::findChar(prefixes.data(), prefixes.size(), source[0]) != nullptr);
 }
 
-[[nodiscard]] constexpr bool startsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
+[[nodiscard]] constexpr bool startsWithNoneOf(std::string_view source, std::string_view prefixes) noexcept
 {
-    return !startsWithAnyOf(source, suffixes);
+    return !startsWithAnyOf(source, prefixes);
 }
 
 
@@ -448,23 +440,30 @@ template<typename... Args>
 //
 //#######################################################################################
 
-[[nodiscard]] constexpr bool iStartsWith(std::string_view source, std::string_view suffix) noexcept
+[[nodiscard]] constexpr bool iStartsWith(std::string_view source, std::string_view prefix) noexcept
 {
     const size_t sourceLength = source.length();
-    const size_t suffixLength = suffix.length();
-    return sourceLength >= suffixLength && Detail::iEquals(suffix.data(), source.data(), suffixLength);
+    const size_t prefixLength = prefix.length();
+    return sourceLength >= prefixLength && Detail::iEquals(prefix.data(), source.data(), prefixLength);
 }
 
-[[nodiscard]] constexpr bool iStartsWithAnyOf(std::string_view source, std::string_view suffixes) noexcept
+[[nodiscard]] constexpr bool iStartsWithAnyOf(std::string_view source, std::string_view prefixes) noexcept
 {
     const size_t sourceLength = source.length();
-    return sourceLength >= 1 && (Detail::iFindChar(suffixes.data(), suffixes.size(), source[0]) != nullptr);
+    return sourceLength >= 1 && (Detail::iFindChar(prefixes.data(), prefixes.size(), source[0]) != nullptr);
 }
 
-[[nodiscard]] constexpr bool iStartsWithNoneOf(std::string_view source, std::string_view suffixes) noexcept
+[[nodiscard]] constexpr bool iStartsWithNoneOf(std::string_view source, std::string_view prefixes) noexcept
 {
-    return !iStartsWithNoneOf(source, suffixes);
+    return !iStartsWithNoneOf(source, prefixes);
 }
+
+
+//#######################################################################################
+//
+//                                      substrings
+//
+//#######################################################################################
 
 
 /**
@@ -475,7 +474,10 @@ template<typename... Args>
 *   leftView("123456789", 0)        => ""
 *   leftView("1234567890", 11)      => "1234567890"
 */
-[[nodiscard]] constexpr std::string_view leftView(std::string_view str, size_t n) noexcept { return str.substr(0, n); }
+[[nodiscard]] constexpr std::string_view leftView(const std::string_view str, const size_t n) noexcept
+{
+    return str.substr(0, n);
+}
 
 
 /**
@@ -486,7 +488,7 @@ template<typename... Args>
 *   rightView("123456789", 0)        => ""
 *   rightView("1234567890", 11)      => "1234567890"
 */
-[[nodiscard]] constexpr std::string_view rightView(std::string_view str, size_t n) noexcept
+[[nodiscard]] constexpr std::string_view rightView(std::string_view str, const size_t n) noexcept
 {
     const size_t strLength = str.length();
     const size_t length = std::min(n, strLength);
@@ -510,34 +512,142 @@ template<typename T>
 
 //#######################################################################################
 //
-//                                      trim
+//                                      strip
 //
 //#######################################################################################
 
 
+/**
+* Strips any of a set of characters from the end of a string
+*   stripEnd("abc",     "")           => "abc"
+*   stripEnd("abc",     "x")          => "abc"
+*   stripEnd("abc",     "bc")         => "a"
+*   stripEnd("",         ?   )        => ""
+*   stripEnd("abc",     "cba")        => ""
+*   stripEnd("Abc",     "cba")        => "A"
+*   stripEnd("abcxabc", "bac")        => "abcx"
+*   stripEnd("abcxabc", "bacdefghi")  => "abcx"
+*/
 
-
-[[nodiscard]] inline std::string_view rTrimAnyOf(std::string_view str, std::string_view trimChars = " \n\r\f\t")
+[[nodiscard]] constexpr inline std::string_view stripEnd(std::string_view str, std::string_view stripChars)
 {
-    const size_t end = str.find_last_not_of(trimChars) + 1;
+    const size_t end = str.find_last_not_of(stripChars) + 1;
     str.remove_suffix(str.size() - end);
     return str;
 }
 
-[[nodiscard]] inline std::string_view lTrimAnyOf(std::string_view str, std::string_view trimChars = " \n\r\f\t")
+
+/**
+* Strips any of a set of characters from the start of a string
+*   stripStart("abc",     "")           => "abc"
+*   stripStart("abc",     "x")          => "abc"
+*   stripStart("abc",     "ab")         => "c"
+*   stripStart("",         ?   )        => ""
+*   stripStart("abc",     "cba")        => ""
+*   stripStart("abC",     "cba")        => "C"
+*   stripStart("abcxabc", "bac")        => "xabc"
+*   stripStart("abcxabc", "bacdefghi")  => "xabc"
+*/
+[[nodiscard]] constexpr inline std::string_view stripStart(std::string_view str, std::string_view stripChars)
 {
-    const size_t start = str.find_first_not_of(trimChars);
+    const size_t start = str.find_first_not_of(stripChars);
     str.remove_prefix(std::min(str.size(), start));
     return str;
 }
 
-[[nodiscard]] inline std::string_view trimAnyOf(std::string_view str, std::string_view trimChars = " \n\r\f\t")
+
+/**
+* Strips any of a set of characters from the start and end of a string
+*   strip("abc",     "")           => "abc"
+*   strip("abc",     "x")          => "abc"
+*   strip("abc",     "ab")         => "c"
+*   strip("",         ?   )        => ""
+*   strip("abc",     "cba")        => ""
+*   strip("aBc",     "cba")        => "B"
+*   strip("abcxabc", "bac")        => "x"
+*   strip("abcxabc", "bacdefghi")  => "x"
+*   strip("abcxax",  "bacdefghi")  => "xax"
+*/
+[[nodiscard]] constexpr inline std::string_view strip(std::string_view str, std::string_view stripChars)
 {
-    const size_t start = str.find_first_not_of(trimChars);
+    const size_t start = str.find_first_not_of(stripChars);
     str.remove_prefix(std::min(str.size(), start));
-    const size_t end = str.find_last_not_of(trimChars) + 1;
+    const size_t end = str.find_last_not_of(stripChars) + 1;
     str.remove_suffix(str.size() - end);
     return str;
 }
 
-} // namespace StringUtils
+
+//#######################################################################################
+//
+//                                strip case insensitive
+//
+//#######################################################################################
+
+
+/**
+* Strips any of a set of characters from the end of a string
+*   iStripEnd("abc",     "")           => "abc"
+*   iStripEnd("abc",     "x")          => "abc"
+*   iStripEnd("abc",     "bc")         => "a"
+*   iStripEnd("",         ?   )        => ""
+*   iStripEnd("abc",     "cba")        => ""
+*   iStripEnd("Abc",     "cba")        => ""
+*   iStripEnd("abcxaBc", "bac")        => "abcx"
+*   iStripEnd("abcxaBc", "bacdefghi")  => "abcx"
+*/
+
+[[nodiscard]] constexpr inline std::string_view iStripEnd(std::string_view str, std::string_view stripChars)
+{
+    const size_t end = Detail::irFindAnyBut(str.data(), str.size(), 0, stripChars.data(), stripChars.size()) + 1;
+    return str.substr(0, end);
+}
+
+
+/**
+* Strips any of a set of characters from the start of a string
+*   stripStart("abc",     "")           => "abc"
+*   stripStart("abc",     "x")          => "abc"
+*   stripStart("abc",     "ab")         => "c"
+*   stripStart("",         ?   )        => ""
+*   stripStart("abc",     "cba")        => ""
+*   stripStart("abC",     "cba")        => ""
+*   stripStart("aBcxabc", "bac")        => "xabc"
+*   stripStart("aBcxabc", "bacdefghi")  => "xabc"
+*/
+[[nodiscard]] constexpr inline std::string_view iStripStart(std::string_view str, std::string_view stripChars)
+{
+    const size_t start = Detail::iFindAnyBut(str.data(), str.size(), 0, stripChars.data(), stripChars.size());
+    str.remove_prefix(std::min(str.size(), start));
+    return str;
+}
+
+
+/**
+* Strips any of a set of characters from the start and end of a string
+*   strip("abc",     "")           => "abc"
+*   strip("abc",     "x")          => "abc"
+*   strip("abc",     "ab")         => "c"
+*   strip("",         ?   )        => ""
+*   strip("abc",     "cba")        => ""
+*   strip("aBc",     "cba")        => ""
+*   strip("aBcxabc", "bac")        => "x"
+*   strip("aBcxabC", "bacdefghi")  => "x"
+*   strip("aBcxax",  "bacdefghi")  => "xax"
+*/
+[[nodiscard]] constexpr inline std::string_view iStrip(std::string_view str, std::string_view stripChars)
+{
+    const size_t start = Detail::iFindAnyBut(str.data(), str.size(), 0, stripChars.data(), stripChars.size());
+    str.remove_prefix(std::min(str.size(), start));
+    
+    const size_t end = Detail::irFindAnyBut(str.data(), str.size(), 0, stripChars.data(), stripChars.size()) + 1;
+    str.remove_suffix(str.size() - end);
+    
+    return str;
+}
+
+
+} // namespace STRINGUTILS_NAMESPACE
+
+
+#endif // !STRINGUTILS_HPP

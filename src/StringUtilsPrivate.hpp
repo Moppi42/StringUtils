@@ -1,3 +1,7 @@
+#ifndef STRINGUTILS_PRIVATE_HPP
+#define STRINGUTILS_PRIVATE_HPP
+
+
 #if defined(__clang__)
 #    define STRINGUTILS_CLANG_COMPILER
 #elif defined(__GNUC__) || defined(__GNUG__)
@@ -83,15 +87,25 @@ static_assert(_MSC_VER >= 1915, "MSVC is not supported for versions below 19.15"
 #    include <optional>
 #endif
 
+
+#ifdef CUSTOM_STRINGUTILS_NAMESPACE
+#    define STRINGUTILS_NAMESPACE CUSTOM_STRINGUTILS_NAMESPACE
+#else
+#    define STRINGUTILS_NAMESPACE StringUtils
+
+#endif
+
 using uchar = unsigned char;
 
-namespace StringUtils {
+namespace STRINGUTILS_NAMESPACE {
 static constexpr size_t INDEX_NOT_FOUND{ std::string::npos };
+#if STRINGUTILS_HAS_CXX17
 static_assert(std::string::npos == std::string_view::npos, "Inconsistent values for std::string::npos and std::string_view::npos");
-} // namespace StringUtils
+#endif
+} // namespace STRINGUTILS_NAMESPACE
 
 
-namespace StringUtils {
+namespace STRINGUTILS_NAMESPACE {
 namespace Detail {
 /**
 * Helper for is_string_convertible
@@ -352,10 +366,36 @@ constexpr inline int compareCharIgnoreCase(const char c1, const char c2) noexcep
 /**
 * Wrapper for std::char_traits::find
 */
-constexpr inline const char* findChar(const char* p, const size_t count, const char ch) noexcept
+constexpr inline const char* findChar(const char* const hayStack, const size_t haySize, const char needle) noexcept
 {
-    return std::char_traits<char>::find(p, count, ch);
+    return std::char_traits<char>::find(hayStack, haySize, needle);
 }
+
+/**
+* Searches for character needle within the first count characters of the sequence pointed to by p in reverse order.
+* A pointer to the first character in the range specified by [p, p + count) that compares equal to ch,
+* or a null pointer if not found.
+*/
+constexpr inline const char* rFindChar(const char* const hayStack, const size_t haySize, const char needle) noexcept
+{
+    if (haySize != 0)
+    {
+        for (const char* position = hayStack + haySize - 1;; --position)
+        {
+            if (charEquals(*position, needle))
+            {
+                return position;
+            }
+
+            if (position == hayStack)
+            {
+                break;
+            }
+        }
+    }
+    return nullptr;
+}
+
 
 /**
 * Searches for character ch case insensitively within the first count characters of the sequence pointed to by p.
@@ -364,20 +404,49 @@ constexpr inline const char* findChar(const char* p, const size_t count, const c
 * See also char_traits::find()
 */
 
-constexpr inline const char* iFindChar(const char* p, const size_t count, const char ch) noexcept
+constexpr inline const char* iFindChar(const char* hayStack, const size_t haySize, const char needle) noexcept
 {
-    const char* const end = p + count;
-    const char lower = charToLowerCase(ch);
-    const char upper = charToUpperCase(ch);
-    for (; p < end; ++p)
+    const char* const end = hayStack + haySize;
+    const char lower = charToLowerCase(needle);
+    const char upper = charToUpperCase(needle);
+    for (; hayStack < end; ++hayStack)
     {
-        if (*p == lower || *p == upper)
+        if (*hayStack == lower || *hayStack == upper)
         {
-            return p;
+            return hayStack;
         }
     }
     return nullptr;
 }
+
+/**
+* Searches for character ch case insensitively within the first count characters of the sequence pointed to by p in reverse order.
+* A pointer to the first character in the range specified by [p, p + count) that compares case insensitively equal to ch,
+* or a null pointer if not found.
+*/
+
+constexpr inline const char* irFindChar(const char* const hayStack, const size_t haySize, const char needle) noexcept
+{
+    if (haySize != 0)
+    {
+        const char lower = charToLowerCase(needle);
+        const char upper = charToUpperCase(needle);
+        for (const char* position = hayStack + haySize - 1;; --position)
+        {
+            if (*position == lower || *position == upper)
+            {
+                return position;
+            }
+
+            if (position == hayStack)
+            {
+                break;
+            }
+        }
+    }
+    return nullptr;
+}
+
 
 /**
 * Wrapper for char_traits::compare == 0
@@ -401,90 +470,13 @@ constexpr inline bool iEquals(const char* ptr1, const char* ptr2, size_t size) n
     return true;
 }
 
-constexpr inline size_t find(const char* hayStack, const size_t haySize, const size_t startIndex, char needle) noexcept
-{
-    if (startIndex < haySize)
-    {
-        const char* match = findChar(hayStack + startIndex, haySize + 1 - startIndex, needle);
-        if (match != nullptr)
-        {
-            return static_cast<size_t>(match - hayStack);
-        }
-    }
-    return INDEX_NOT_FOUND;
-}
 
 
-constexpr inline size_t find(const char* hayStack, const size_t haySize, const size_t startIndex, const char* needle, const size_t needleSize) noexcept
-{
-    if (needleSize > haySize || startIndex > haySize - needleSize)
-    {
-        return INDEX_NOT_FOUND;
-    }
-
-    if (needleSize == 0)
-    {
-        return startIndex;
-    }
-
-    const char* const end = hayStack + (haySize + 1 - needleSize);
-    for (const char* position = hayStack + startIndex;; ++position)
-    {
-        position = findChar(position, static_cast<size_t>(end - position), *needle); // Searches for the first character of needle
-        if (position == nullptr)
-        {
-            return INDEX_NOT_FOUND;
-        }
-
-        if (equals(position, needle, needleSize)) // found match
-        {
-            return static_cast<size_t>(position - hayStack);
-        }
-    }
-}
 
 
-constexpr inline size_t iFind(const char* hayStack, const size_t haySize, const size_t startIndex, char needle) noexcept
-{
-    if (startIndex < haySize)
-    {
-        const char* match = iFindChar(hayStack + startIndex, haySize + 1 - startIndex, needle);
-        if (match != nullptr)
-        {
-            return static_cast<size_t>(match - hayStack);
-        }
-    }
-    return INDEX_NOT_FOUND;
-}
 
 
-constexpr inline size_t iFind(const char* hayStack, const size_t haySize, const size_t startIndex, const char* needle, const size_t needleSize) noexcept
-{
-    if (needleSize > haySize || startIndex > haySize - needleSize)
-    {
-        return INDEX_NOT_FOUND;
-    }
-
-    if (needleSize == 0)
-    {
-        return startIndex;
-    }
-
-    const char* const end = hayStack + (haySize + 1 - needleSize);
-    for (const char* position = hayStack + startIndex;; ++position)
-    {
-        position = iFindChar(position, static_cast<size_t>(end - position), *needle); // Searches for the first character of needle
-        if (position == nullptr)
-        {
-            return INDEX_NOT_FOUND;
-        }
-
-        if (iEquals(position, needle, needleSize)) // found match
-        {
-            return static_cast<size_t>(position - hayStack);
-        }
-    }
-}
+//TODO: benchmark 64 byte version (1 bit per char)
 
 class StringMatchHelper
 { // helper for findAny so we do not have O(n) instead of O(n^2)
@@ -499,8 +491,8 @@ class StringMatchHelper
 
     constexpr void iMark(const char c) noexcept
     {
-        m_Marks[static_cast<uchar>(charToLowerCase(c))] = true;
-        m_Marks[static_cast<uchar>(charToUpperCase(c))] = true;
+        mark(charToLowerCase(c));
+        mark(charToUpperCase(c));
     }
 
     constexpr void mark(const char* start, const char* const end) noexcept
@@ -544,25 +536,48 @@ constexpr inline StringMatchHelper generateStringMatchHelper(const char* const s
     return matchHelper;
 }
 
-/**
-* Finds the first occurrence of any of the chars in [needles, needles + needlesSize)
-* Uses a lookup array for the needles => O(n) instead of O(n^2)
-*/
-constexpr size_t iFindAnyOf(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
+
+
+constexpr inline size_t find(const char* hayStack, const size_t haySize, const size_t startIndex, char needle) noexcept
 {
-    if (needlesSize != 0 && startIndex < haySize)
+    if (startIndex < haySize)
     {
-        const StringMatchHelper matchHelper = iGenerateStringMatchHelper(needles, needlesSize);
-        const char* const end = hayStack + haySize;
-        for (const char* position = hayStack + startIndex; position < end; ++position)
+        const char* match = findChar(hayStack + startIndex, haySize + 1 - startIndex, needle);
+        if (match != nullptr)
         {
-            if (matchHelper.hasMatch(*position))
-            {
-                return static_cast<size_t>(position - hayStack);
-            }
+            return static_cast<size_t>(match - hayStack);
         }
     }
     return INDEX_NOT_FOUND;
+}
+
+
+constexpr inline size_t find(const char* hayStack, const size_t haySize, const size_t startIndex, const char* needle, const size_t needleSize) noexcept
+{
+    if (needleSize > haySize || startIndex > haySize - needleSize)
+    {
+        return INDEX_NOT_FOUND;
+    }
+
+    if (needleSize == 0)
+    {
+        return startIndex;
+    }
+
+    const char* const end = hayStack + (haySize + 1 - needleSize);
+    for (const char* position = hayStack + startIndex;; ++position)
+    {
+        position = findChar(position, static_cast<size_t>(end - position), *needle); // Searches for the first character of needle
+        if (position == nullptr)
+        {
+            return INDEX_NOT_FOUND;
+        }
+
+        if (equals(position, needle, needleSize)) // found match
+        {
+            return static_cast<size_t>(position - hayStack);
+        }
+    }
 }
 
 /**
@@ -588,28 +603,7 @@ constexpr size_t findAnyOf(const char* const hayStack, const size_t haySize, con
 
 
 /**
-* Finds the first occurrence of any of the chars in [needles, needles + needlesSize)
-* Uses a lookup array for the needles => O(n) instead of O(n^2)
-*/
-constexpr size_t iFindAnyBut(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
-{
-    if (startIndex < haySize)
-    {
-        const StringMatchHelper matchHelper = iGenerateStringMatchHelper(needles, needlesSize);
-        const char* const end = hayStack + haySize;
-        for (const char* position = hayStack + startIndex; position < end; ++position)
-        {
-            if (!matchHelper.hasMatch(*position))
-            {
-                return static_cast<size_t>(position - hayStack);
-            }
-        }
-    }
-    return INDEX_NOT_FOUND;
-}
-
-/**
-* Implementation of string_view::find_first_of (MSVC implementation)
+* Implementation of string_view::find_first_not_of (MSVC implementation)
 * Keep around for C++11 compatibility
 */
 constexpr size_t findAnyBut(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
@@ -630,8 +624,297 @@ constexpr size_t findAnyBut(const char* const hayStack, const size_t haySize, co
 }
 
 
-template<typename Separator>
-static inline std::string join(const Separator&) noexcept
+constexpr inline size_t rFind(const char* const hayStack, const size_t haySize, const size_t startIndex, const char needle) noexcept
+{
+    if (startIndex < haySize)
+    {
+        const char* match = rFindChar(hayStack + startIndex, haySize + 1 - startIndex, needle);
+        if (match != nullptr)
+        {
+            return static_cast<size_t>(match - hayStack);
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+constexpr inline size_t rFind(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needle, const size_t needleSize) noexcept
+{
+    if (needleSize == 0)
+    {
+        return std::min(startIndex, haySize);
+    }
+
+    if (needleSize <= haySize)
+    {
+        for (const char* position = hayStack + std::min(startIndex, haySize - needleSize);; --position)
+        {
+            if (charEquals(*position, *needle) && equals(position, needle, needleSize))
+            {
+                return static_cast<size_t>(position - hayStack);
+            }
+
+            if (position == hayStack)
+            {
+                break;
+            }
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+/**
+* Implementation of string_view::find_last_of (MSVC implementation)
+* Keep around for C++11 compatibility
+*/
+constexpr size_t rFindAnyOf(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
+{
+    if (needlesSize != 0 && startIndex < haySize)
+    {
+        const StringMatchHelper matchHelper = generateStringMatchHelper(needles, needlesSize);
+        const char* const end = hayStack + haySize;
+        for (const char* position = hayStack + std::min(startIndex, haySize);; --position)
+        {
+            if (matchHelper.hasMatch(*position))
+            {
+                return static_cast<size_t>(position - hayStack);
+            }
+            if (position == hayStack) {
+                break;
+            }
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+/**
+* Implementation of string_view::find_first_not_of (MSVC implementation)
+* Keep around for C++11 compatibility
+*/
+constexpr size_t rFindAnyBut(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
+{
+    if (startIndex < haySize)
+    {
+        const StringMatchHelper matchHelper = generateStringMatchHelper(needles, needlesSize);
+        const char* const end = hayStack + haySize;
+        for (const char* position = hayStack + std::min(startIndex, haySize);; --position)
+        {
+            if (!matchHelper.hasMatch(*position))
+            {
+                return static_cast<size_t>(position - hayStack);
+            }
+            if (position == hayStack)
+            {
+                break;
+            }
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+
+constexpr inline size_t iFind(const char* const hayStack, const size_t haySize, const size_t startIndex, const char needle) noexcept
+{
+    if (startIndex < haySize)
+    {
+        const char* match = iFindChar(hayStack + startIndex, haySize + 1 - startIndex, needle);
+        if (match != nullptr)
+        {
+            return static_cast<size_t>(match - hayStack);
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+constexpr inline size_t iFind(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needle, const size_t needleSize) noexcept
+{
+    if (needleSize > haySize || startIndex > haySize - needleSize)
+    {
+        return INDEX_NOT_FOUND;
+    }
+
+    if (needleSize == 0)
+    {
+        return startIndex;
+    }
+
+    const char* const end = hayStack + (haySize + 1 - needleSize);
+    for (const char* position = hayStack + startIndex;; ++position)
+    {
+        position = iFindChar(position, static_cast<size_t>(end - position), *needle); // Searches for the first character of needle
+        if (position == nullptr)
+        {
+            return INDEX_NOT_FOUND;
+        }
+
+        if (iEquals(position, needle, needleSize)) // found match
+        {
+            return static_cast<size_t>(position - hayStack);
+        }
+    }
+}
+
+/**
+* Finds the first occurrence case insensitively of any of the chars in [needles, needles + needlesSize)
+* Uses a lookup array for the needles => O(n) instead of O(n^2)
+*/
+constexpr size_t iFindAnyOf(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
+{
+    if (needlesSize != 0 && startIndex < haySize)
+    {
+        const StringMatchHelper matchHelper = iGenerateStringMatchHelper(needles, needlesSize);
+        const char* const end = hayStack + haySize;
+        for (const char* position = hayStack + startIndex; position < end; ++position)
+        {
+            if (matchHelper.hasMatch(*position))
+            {
+                return static_cast<size_t>(position - hayStack);
+            }
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+/**
+* Finds the first occurrence case insensitively of any except the chars in [needles, needles + needlesSize)
+* Uses a lookup array for the needles => O(n) instead of O(n^2)
+*/
+constexpr size_t iFindAnyBut(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
+{
+    if (startIndex < haySize)
+    {
+        const StringMatchHelper matchHelper = iGenerateStringMatchHelper(needles, needlesSize);
+        const char* const end = hayStack + haySize;
+        for (const char* position = hayStack + startIndex; position < end; ++position)
+        {
+            if (!matchHelper.hasMatch(*position))
+            {
+                return static_cast<size_t>(position - hayStack);
+            }
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+
+
+
+
+
+
+constexpr inline size_t irFind(const char* const hayStack, const size_t haySize, const size_t startIndex, const char needle) noexcept
+{
+    if (startIndex < haySize)
+    {
+        const char* match = irFindChar(hayStack + startIndex, haySize + 1 - startIndex, needle);
+        if (match != nullptr)
+        {
+            return static_cast<size_t>(match - hayStack);
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+constexpr inline size_t irFind(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needle, const size_t needleSize) noexcept
+{
+
+    if (needleSize == 0)
+    {
+        return std::min(startIndex, haySize);
+    }
+    if (needleSize <= haySize)
+    {
+        for (const char* position = hayStack + std::min(startIndex, haySize - needleSize);; --position)
+        {
+            if (charEqualsIgnoreCase(*position, *needle) && iEquals(position, needle, needleSize))
+            {
+                return static_cast<size_t>(position - hayStack);
+            }
+
+            if (position == hayStack)
+            {
+                break;
+            }
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+
+
+/**
+* Finds the last occurrence case insensitively of any of the chars in [needles, needles + needlesSize)
+* Uses a lookup array for the needles => O(n) instead of O(n^2)
+*/
+constexpr size_t irFindAnyOf(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
+{
+    if (needlesSize != 0 && startIndex < haySize)
+    {
+        const StringMatchHelper matchHelper = iGenerateStringMatchHelper(needles, needlesSize);
+        const char* const end = hayStack + haySize;
+        for (const char* position = hayStack + std::min(startIndex, haySize);; --position)
+        {
+            if (matchHelper.hasMatch(*position))
+            {
+                return static_cast<size_t>(position - hayStack);
+            }
+            if (position == hayStack)
+            {
+                break;
+            }
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+/**
+* Finds the last occurrence case insensitively of none of the chars in [needles, needles + needlesSize)
+* Uses a lookup array for the needles => O(n) instead of O(n^2)
+*/
+constexpr size_t irFindAnyBut(const char* const hayStack, const size_t haySize, const size_t startIndex, const char* const needles, const size_t needlesSize) noexcept
+{
+    if (startIndex < haySize)
+    {
+        const StringMatchHelper matchHelper = iGenerateStringMatchHelper(needles, needlesSize);
+        const char* const end = hayStack + haySize;
+        for (const char* position = hayStack + std::min(startIndex, haySize);; --position)
+        {
+            if (!matchHelper.hasMatch(*position))
+            {
+                return static_cast<size_t>(position - hayStack);
+            }
+            if (position == hayStack)
+            {
+                break;
+            }
+        }
+    }
+    return INDEX_NOT_FOUND;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+template<typename Delimiter>
+static inline std::string join(const Delimiter&) noexcept
 {
     return std::string();
 }
@@ -908,6 +1191,9 @@ struct detector<Default, void_t<Op<Args...>>, Op, Args...>
     using type = Op<Args...>;
 };
 
+
+// Note: On MSVC 19.14 C++11 there is a compiler bug regarding is_detected
+// TODO: find a workaround
 template<template<class...> class Op, class... Args>
 using is_detected = typename TypeTraits::detector<TypeTraits::nonesuch, void, Op, Args...>::value_t;
 
@@ -935,14 +1221,14 @@ using has_custom_toString_member = TypeTraits::is_detected<custom_toString_membe
 
 // TODO check if return type is std::string (or convertible to string)
 template<class T>
-using custom_toString_t = decltype(std::declval<StringUtils::Custom::toStringImpl<T>>().operator()(std::declval<T>()));
+using custom_toString_t = decltype(std::declval<STRINGUTILS_NAMESPACE::Custom::toStringImpl<T>>().operator()(std::declval<T>()));
 
 template<class T>
 using has_custom_toString = TypeTraits::is_detected<custom_toString_t, T>;
 
 
 template<class T>
-using builtIn_toString_t = decltype(std::declval<StringUtils::Detail::builtInToStringImpl<T>>().operator()(std::declval<T>()));
+using builtIn_toString_t = decltype(std::declval<STRINGUTILS_NAMESPACE::Detail::builtInToStringImpl<T>>().operator()(std::declval<T>()));
 
 template<class T>
 using has_builtIn_toString = TypeTraits::is_detected<builtIn_toString_t, T>;
@@ -1046,4 +1332,7 @@ inline std::string toString(const T& value)
 
 } // namespace Detail
 
-} // namespace StringUtils
+} // namespace STRINGUTILS_NAMESPACE
+
+
+#endif // !STRINGUTILS_PRIVATE_HPP
