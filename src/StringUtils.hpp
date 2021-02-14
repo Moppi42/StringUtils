@@ -4,17 +4,6 @@
 
 #include "StringUtilsPrivate.hpp"
 namespace STRINGUTILS_NAMESPACE {
-enum SplitBehavior
-{
-    SKIP_EMPTY_PARTS,
-    KEEP_EMPTY_PARTS
-};
-
-enum CaseSensitivity
-{
-    CASE_INSENSITIVE,
-    CASE_SENSITIVE
-};
 
 
 constexpr auto asciiLowerCase = "abcdefghijklmnopqrstuvwxyz";
@@ -190,62 +179,79 @@ template<typename... Args>
 /**
 * Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
 * If separator is not found in source a single-element list containing source is returned.
-* If splitBehavior is SplitBehavior::SKIP_EMPTY_PARTS empty substrings are discarded. By default splitBehavior is set to SplitBehavior::KEEP_EMPTY_PARTS
+* Empty Substrings are kept.
 *
-*   split("1|23|456|7", "|", SplitBehavior::KEEP_EMPTY_PARTS)   => ["1", "23", "456", "7"]
-*   split("12||34",     "|", SplitBehavior::KEEP_EMPTY_PARTS)   => ["12", "", "34"]
-*   split("12||34",     "|", SplitBehavior::SKIP_EMPTY_PARTS)   => ["12", "34"]
-*   split("12|34|",     "|", SplitBehavior::KEEP_EMPTY_PARTS)   => ["12", "34", ""]
-*   split("12|34|",     "|", SplitBehavior::SKIP_EMPTY_PARTS)   => ["12", "34"]
-*   split("|12|34",     "|", SplitBehavior::KEEP_EMPTY_PARTS)   => ["", "12", "34"]
-*   split("|12|34",     "|", SplitBehavior::SKIP_EMPTY_PARTS)   => ["12", "34"]
-*   split("1234",       "|", ?                              )   => ["1234"]
-*   split("",            ? , SplitBehavior::KEEP_EMPTY_PARTS)   => [""]
-*   split("",            ? , SplitBehavior::SKIP_EMPTY_PARTS)   => []
-*   split("1234",       "" , SplitBehavior::KEEP_EMPTY_PARTS)   => ["","1", "2", "3", "4"]
-*   split("1234",       "" , SplitBehavior::SKIP_EMPTY_PARTS)   => ["1", "2", "3", "4"]
-*
+*   splitKeepEmptyParts("1|23|456|7", "|")      => ["1", "23", "456", "7"]
+*   splitKeepEmptyParts("1|23||456|7", "||")    => ["1|23", "456|7"]
+*   splitKeepEmptyParts("12||34",     "|")      => ["12", "", "34"]
+*   splitKeepEmptyParts("12|34|",     "|")      => ["12", "34", ""]
+*   splitKeepEmptyParts("|12|34",     "|")      => ["", "12", "34"]
+*   splitKeepEmptyParts("1234",       "|")      => ["1234"]
+*   splitKeepEmptyParts("",            ? )      => [""]
+*   splitKeepEmptyParts("1234",       "")       => ["","1", "2", "3", "4"]
 */
-[[nodiscard]] inline std::vector<std::string> split(std::string_view source, std::string_view separator, const StringUtils::SplitBehavior splitBehavior = SplitBehavior::KEEP_EMPTY_PARTS)
+
+[[nodiscard]] inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, std::string_view separator)
 {
-    if (splitBehavior == SplitBehavior::KEEP_EMPTY_PARTS)
-    {
-        return Detail::splitKeepEmptyParts(source, separator);
-    }
-    else
-    {
-        return Detail::splitSkipEmptyParts(source, separator);
-    }
+    return Detail::splitKeepEmptyParts(source, separator);
 }
 
 /**
 * Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
 * If separator is not found in source a single-element list containing source is returned.
-* If splitBehavior is SplitBehavior::SKIP_EMPTY_PARTS empty substrings are discarded. By default splitBehavior is set to SplitBehavior::KEEP_EMPTY_PARTS
+* Empty Substrings are kept.
 *
-*   split("1|23|456|7", '|', SplitBehavior::KEEP_EMPTY_PARTS)   => ["1", "23", "456", "7"]
-*   split("12||34",     '|', SplitBehavior::KEEP_EMPTY_PARTS)   => ["12", "", "34"]
-*   split("12||34",     '|', SplitBehavior::SKIP_EMPTY_PARTS)   => ["12", "34"]
-*   split("12|34|",     '|', SplitBehavior::KEEP_EMPTY_PARTS)   => ["12", "34", ""]
-*   split("12|34|",     '|', SplitBehavior::SKIP_EMPTY_PARTS)   => ["12", "34"]
-*   split("|12|34",     '|', SplitBehavior::KEEP_EMPTY_PARTS)   => ["", "12", "34"]
-*   split("|12|34",     '|', SplitBehavior::SKIP_EMPTY_PARTS)   => ["12", "34"]
-*   split("1234",       '|', ?                              )   => ["1234"]
-*   split("",            ? , SplitBehavior::KEEP_EMPTY_PARTS)   => [""]
-*   split("",            ? , SplitBehavior::SKIP_EMPTY_PARTS)   => []
+*   splitKeepEmptyParts("1|23|456|7", '|')  => ["1", "23", "456", "7"]
+*   splitKeepEmptyParts("12||34",     '|')  => ["12", "", "34"]
+*   splitKeepEmptyParts("12|34|",     '|')  => ["12", "34", ""]
+*   splitKeepEmptyParts("|12|34",     '|')  => ["", "12", "34"]
+*   splitKeepEmptyParts("1234",       '|')  => ["1234"]
+*   splitKeepEmptyParts("",            ? )  => [""]
+*/
+
+[[nodiscard]] inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, char separator)
+{
+    return Detail::splitKeepEmptyParts(source, separator);
+}
+
+/**
+* Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
+* If separator is not found in source a single-element list containing source is returned.
+* Empty Substrings are discarded.
+*
+*   splitSkipEmptyParts("1|23|456|7",   "|")    => ["1", "23", "456", "7"]
+*   splitSkipEmptyParts("1|23||456|7", "||")    => ["1|23", "456|7"]
+*   splitSkipEmptyParts("12||34",       "|")    => ["12", "34"]
+*   splitSkipEmptyParts("12|34|",       "|")    => ["12", "34"]
+*   splitSkipEmptyParts("|12|34",       "|")    => ["12", "34"]
+*   splitSkipEmptyParts("1234",         "|")    => ["1234"]
+*   splitSkipEmptyParts("",              ? )    => []
+*   splitSkipEmptyParts("1234",         "" )    => ["1", "2", "3", "4"]
 *
 */
 
-[[nodiscard]] inline std::vector<std::string> split(std::string_view source, char separator, const StringUtils::SplitBehavior splitBehavior)
+[[nodiscard]] inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, std::string_view separator)
 {
-    if (splitBehavior == SplitBehavior::KEEP_EMPTY_PARTS)
-    {
-        return Detail::splitKeepEmptyParts(source, separator);
-    }
-    else
-    {
-        return Detail::splitSkipEmptyParts(source, separator);
-    }
+    return Detail::splitSkipEmptyParts(source, separator);
+}
+
+/**
+* Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
+* If separator is not found in source a single-element list containing source is returned.
+* Empty Substrings are discarded.
+* 
+*   splitSkipEmptyParts("1|23|456|7", '|')  => ["1", "23", "456", "7"]
+*   splitSkipEmptyParts("12||34",     '|')  => ["12", "34"]
+*   splitSkipEmptyParts("12|34|",     '|')  => ["12", "34"]
+*   splitSkipEmptyParts("|12|34",     '|')  => ["12", "34"]
+*   splitSkipEmptyParts("1234",       '|')  => ["1234"]
+*   splitSkipEmptyParts("",            ? )  => []
+*
+*/
+
+[[nodiscard]] inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, char separator)
+{
+    return Detail::splitSkipEmptyParts(source, separator);
 }
 
 
@@ -639,10 +645,10 @@ template<typename T>
 {
     const size_t start = Detail::iFindAnyBut(str.data(), str.size(), 0, stripChars.data(), stripChars.size());
     str.remove_prefix(std::min(str.size(), start));
-    
+
     const size_t end = Detail::irFindAnyBut(str.data(), str.size(), 0, stripChars.data(), stripChars.size()) + 1;
     str.remove_suffix(str.size() - end);
-    
+
     return str;
 }
 
