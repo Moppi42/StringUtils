@@ -3,8 +3,8 @@
 
 
 #include "StringUtilsPrivate.hpp"
+#include "StringUtils.hpp"
 namespace STRINGUTILS_NAMESPACE {
-
 
 
 template<typename Delimiter, typename... Args>
@@ -78,27 +78,397 @@ template<typename... Args>
 }
 
 
-[[nodiscard]] inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, std::string_view separator)
+//#######################################################################################
+//
+//                                  Split
+//
+//#######################################################################################
+
+[[nodiscard]] inline std::vector<std::string_view> split(std::string_view source, const std::string_view separator)
 {
-    return Detail::splitKeepEmptyParts(source, separator);
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparator(source);
+    }
+    std::vector<std::string_view> list;
+    for (;;)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + separatorSize);
+    }
+    list.emplace_back(source);
+    return list;
+}
+
+[[nodiscard]] inline std::vector<std::string_view> split(std::string_view source, const char separator)
+{
+    std::vector<std::string_view> list;
+    for (;;)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source);
+    return list;
+}
+
+[[nodiscard]] inline std::vector<std::string_view> split(std::string_view source, const std::string_view separator, const size_t maxSplits)
+{
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparator(source, maxSplits);
+    }
+    std::vector<std::string_view> list;
+
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + separatorSize);
+    }
+    list.emplace_back(source);
+    return list;
+}
+
+[[nodiscard]] inline std::vector<std::string_view> split(std::string_view source, const char separator, const size_t maxSplits)
+{
+    std::vector<std::string_view> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source);
+    return list;
+}
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyOf(std::string_view source, const std::string_view separators)
+{
+    if (separators.size() == 0)
+    {
+        return std::vector<std::string_view>(1, source);
+    }
+    std::vector<std::string_view> list;
+    for (;;)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source);
+    return list;
+}
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyOf(std::string_view source, const std::string_view separators, const size_t maxSplits)
+{
+    if (separators.size() == 0)
+    {
+        return std::vector<std::string_view>(1, source);
+    }
+    std::vector<std::string_view> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source);
+    return list;
+}
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyBut(std::string_view source, const std::string_view separators)
+{
+    std::vector<std::string_view> list;
+    for (;;)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source);
+    return list;
+}
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyBut(std::string_view source, const std::string_view separators, const size_t maxSplits)
+{
+    std::vector<std::string_view> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source);
+    return list;
+}
+
+//#######################################################################################
+//
+//                                Split Skip Empty Parts
+//
+//#######################################################################################
+
+[[nodiscard]] inline std::vector<std::string_view> splitSkipEmpty(std::string_view source, const std::string_view separator)
+{
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparatorSkipEmpty(source);
+    }
+    std::vector<std::string_view> list;
+    for (;;)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + separatorSize);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source);
+    }
+    return list;
 }
 
 
-[[nodiscard]] inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, char separator)
+[[nodiscard]] inline std::vector<std::string_view> splitSkipEmpty(std::string_view source, const char separator)
 {
-    return Detail::splitKeepEmptyParts(source, separator);
+    std::vector<std::string_view> list;
+    for (;;)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source);
+    }
+    return list;
 }
 
 
-[[nodiscard]] inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, std::string_view separator)
+[[nodiscard]] inline std::vector<std::string_view> splitSkipEmpty(std::string_view source, const std::string_view separator, const size_t maxSplits)
 {
-    return Detail::splitSkipEmptyParts(source, separator);
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparatorSkipEmpty(source);
+    }
+    std::vector<std::string_view> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + separatorSize);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source);
+    }
+    return list;
 }
 
 
-[[nodiscard]] inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, char separator)
+[[nodiscard]] inline std::vector<std::string_view> splitSkipEmpty(std::string_view source, const char separator, const size_t maxSplits)
 {
-    return Detail::splitSkipEmptyParts(source, separator);
+    std::vector<std::string_view> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source);
+    }
+    return list;
+}
+
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyOfSkipEmpty(std::string_view source, const std::string_view separators)
+{
+    if (separators.size() == 0)
+    {
+        return std::vector<std::string_view>(1, source);
+    }
+    std::vector<std::string_view> list;
+    for (;;)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source);
+    }
+    return list;
+}
+
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyOfSkipEmpty(std::string_view source, const std::string_view separators, const size_t maxSplits)
+{
+    if (separators.size() == 0)
+    {
+        return std::vector<std::string_view>(1, source);
+    }
+    std::vector<std::string_view> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source);
+    }
+    return list;
+}
+
+
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyButSkipEmpty(std::string_view source, const std::string_view separators)
+{
+    std::vector<std::string_view> list;
+    for (;;)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source);
+    }
+    return list;
+}
+
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyButSkipEmpty(std::string_view source, const std::string_view separators, const size_t maxSplits)
+{
+    std::vector<std::string_view> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source);
+    }
+    return list;
 }
 
 
@@ -354,7 +724,7 @@ template<typename T>
 //#######################################################################################
 
 
-[[nodiscard]] constexpr inline std::string_view stripEnd(std::string_view str, std::string_view stripChars)
+[[nodiscard]] constexpr inline std::string_view stripEnd(std::string_view str, std::string_view stripChars) noexcept
 {
     const size_t end = str.find_last_not_of(stripChars) + 1;
     str.remove_suffix(str.size() - end);
@@ -362,7 +732,7 @@ template<typename T>
 }
 
 
-[[nodiscard]] constexpr inline std::string_view stripStart(std::string_view str, std::string_view stripChars)
+[[nodiscard]] constexpr inline std::string_view stripStart(std::string_view str, std::string_view stripChars) noexcept
 {
     const size_t start = str.find_first_not_of(stripChars);
     str.remove_prefix(std::min(str.size(), start));
@@ -370,7 +740,7 @@ template<typename T>
 }
 
 
-[[nodiscard]] constexpr inline std::string_view strip(std::string_view str, std::string_view stripChars)
+[[nodiscard]] constexpr inline std::string_view strip(std::string_view str, std::string_view stripChars) noexcept
 {
     const size_t start = str.find_first_not_of(stripChars);
     str.remove_prefix(std::min(str.size(), start));
@@ -387,14 +757,14 @@ template<typename T>
 //#######################################################################################
 
 
-[[nodiscard]] constexpr inline std::string_view iStripEnd(std::string_view str, std::string_view stripChars)
+[[nodiscard]] constexpr inline std::string_view iStripEnd(std::string_view str, std::string_view stripChars) noexcept
 {
     const size_t end = Detail::irFindAnyBut(str.data(), str.size(), 0, stripChars.data(), stripChars.size()) + 1;
     return str.substr(0, end);
 }
 
 
-[[nodiscard]] constexpr inline std::string_view iStripStart(std::string_view str, std::string_view stripChars)
+[[nodiscard]] constexpr inline std::string_view iStripStart(std::string_view str, std::string_view stripChars) noexcept
 {
     const size_t start = Detail::iFindAnyBut(str.data(), str.size(), 0, stripChars.data(), stripChars.size());
     str.remove_prefix(std::min(str.size(), start));
@@ -402,7 +772,7 @@ template<typename T>
 }
 
 
-[[nodiscard]] constexpr inline std::string_view iStrip(std::string_view str, std::string_view stripChars)
+[[nodiscard]] constexpr inline std::string_view iStrip(std::string_view str, std::string_view stripChars) noexcept
 {
     const size_t start = Detail::iFindAnyBut(str.data(), str.size(), 0, stripChars.data(), stripChars.size());
     str.remove_prefix(std::min(str.size(), start));

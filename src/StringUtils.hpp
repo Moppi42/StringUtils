@@ -125,12 +125,9 @@ template<typename... Args>
 */
 [[nodiscard]] constexpr bool iEquals(const std::string_view str1, const std::string_view str2) noexcept;
 
-
 [[nodiscard]] constexpr bool iEquals(const char c1, const std::string_view str2) noexcept;
 
-
 [[nodiscard]] constexpr bool iEquals(const std::string_view str1, const char c2) noexcept;
-
 
 [[nodiscard]] constexpr bool iEquals(const char c1, const char c2) noexcept;
 
@@ -138,68 +135,138 @@ template<typename... Args>
 /**
 * Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
 * If separator is not found in source a single-element list containing source is returned.
+* The string will be splitted at most maxSplits times
 * Empty Substrings are kept.
 *
-*   splitKeepEmptyParts("1|23|456|7", "|")      => ["1", "23", "456", "7"]
-*   splitKeepEmptyParts("1|23||456|7", "||")    => ["1|23", "456|7"]
-*   splitKeepEmptyParts("12||34",     "|")      => ["12", "", "34"]
-*   splitKeepEmptyParts("12|34|",     "|")      => ["12", "34", ""]
-*   splitKeepEmptyParts("|12|34",     "|")      => ["", "12", "34"]
-*   splitKeepEmptyParts("1234",       "|")      => ["1234"]
-*   splitKeepEmptyParts("",            ? )      => [""]
-*   splitKeepEmptyParts("1234",       "")       => ["","1", "2", "3", "4"]
+*   split("1|23|456|7",   "|")  => ["1", "23", "456", "7"]
+*   split("1|23|456|7",   '|')  => ["1", "23", "456", "7"]
+*   split("1|23||456|7", "||")  => ["1|23", "456|7"]
+*   split("12||34",       "|")  => ["12", "", "34"]
+*   split("12|34|",       "|")  => ["12", "34", ""]
+*   split("|12|34",       "|")  => ["", "12", "34"]
+*   split("1234",         "|")  => ["1234"]
+*   split("",              ? )  => [""]
+*   split("1234",          "")  => ["","1", "2", "3", "4"]
+*   split("1|2|3|4|5", "|", 2)  => ["1", "2", "3|4|5"]
+*   split("1|2|3|4|5", "|", 0)  => ["1|2|3|4|5"]
+*   split("1||3|4|5",  "|", 2)  => ["1", "", "3|4|5"]
+*   split("1||3|4|5",  "|", 20) => ["1", "", "3", "4", "5"]
 */
 
-[[nodiscard]] inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, std::string_view separator);
+[[nodiscard]] inline std::vector<std::string_view> split(std::string_view source, std::string_view separator);
+
+[[nodiscard]] inline std::vector<std::string_view> split(std::string_view source, std::string_view separator, size_t maxSplits);
+
+[[nodiscard]] inline std::vector<std::string_view> split(std::string_view source, char separator);
+
+[[nodiscard]] inline std::vector<std::string_view> split(std::string_view source, char separator, size_t maxSplits);
+
 
 /**
-* Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
-* If separator is not found in source a single-element list containing source is returned.
+* Splits source into substrings wherever any of the separators occurs, and returns a list containing the substrings.
+* If none of the separators is found in source a single-element list containing source is returned.
+* The string will be splitted at most maxSplits times
 * Empty Substrings are kept.
 *
-*   splitKeepEmptyParts("1|23|456|7", '|')  => ["1", "23", "456", "7"]
-*   splitKeepEmptyParts("12||34",     '|')  => ["12", "", "34"]
-*   splitKeepEmptyParts("12|34|",     '|')  => ["12", "34", ""]
-*   splitKeepEmptyParts("|12|34",     '|')  => ["", "12", "34"]
-*   splitKeepEmptyParts("1234",       '|')  => ["1234"]
-*   splitKeepEmptyParts("",            ? )  => [""]
+*   splitAnyOf("1|23#45",     "|#") => ["1", "23", "45"]
+*   splitAnyOf("1|#23|45",    "|#") => ["1", "", "23", "45"]
+*   splitAnyOf("1|23#45",       "") => ["1|23#45"]
+*   splitAnyOf("1|23#45",      "#") => ["1|23", "45]
+*   splitAnyOf("12345",       "|#") => ["12345"]
+*   splitAnyOf("",              ? ) => [""]
+*   splitAnyOf("1|23#4|5", "|#", 2) => ["1", "23", "4|5"]
+*/
+[[nodiscard]] inline std::vector<std::string_view> splitAnyOf(std::string_view source, std::string_view separators);
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyOf(std::string_view source, std::string_view separators, size_t maxSplits);
+
+
+/**
+* Splits source into substrings wherever any not of the separators occurs, and returns a list containing the substrings.
+* The string will be splitted at most maxSplits times
+* Empty Substrings are kept.
+*
+*   splitAnyBut("1|2#45",     "|#") => ["", "|", "#", "", ""]
+*   splitAnyBut("1|#",        "|#") => ["", "|#"]
+*   splitAnyBut("123",          "") => ["", "", "", ""]
+*   splitAnyBut("12345", "1234567") => ["12345"]
+*   splitAnyBut("",             ? ) => [""]
+*   splitAnyBut("1|2#45",  "|#", 2) => ["", "|", "#45"]
 */
 
-[[nodiscard]] inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, char separator);
+[[nodiscard]] inline std::vector<std::string_view> splitAnyBut(std::string_view source, std::string_view separators);
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyBut(std::string_view source, std::string_view separators, size_t maxSplits);
 
 /**
 * Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
 * If separator is not found in source a single-element list containing source is returned.
+* The string will be splitted at most maxSplits times
 * Empty Substrings are discarded.
 *
-*   splitSkipEmptyParts("1|23|456|7",   "|")    => ["1", "23", "456", "7"]
-*   splitSkipEmptyParts("1|23||456|7", "||")    => ["1|23", "456|7"]
-*   splitSkipEmptyParts("12||34",       "|")    => ["12", "34"]
-*   splitSkipEmptyParts("12|34|",       "|")    => ["12", "34"]
-*   splitSkipEmptyParts("|12|34",       "|")    => ["12", "34"]
-*   splitSkipEmptyParts("1234",         "|")    => ["1234"]
-*   splitSkipEmptyParts("",              ? )    => []
-*   splitSkipEmptyParts("1234",         "" )    => ["1", "2", "3", "4"]
+*   splitSkipEmpty("1|23|456|7",   "|")     => ["1", "23", "456", "7"]
+*   splitSkipEmpty("1|23|456|7",   '|')     => ["1", "23", "456", "7"]
+*   splitSkipEmpty("1|23||456|7", "||")     => ["1|23", "456|7"]
+*   splitSkipEmpty("12||34",       "|")     => ["12", "34"]
+*   splitSkipEmpty("12|34|",       "|")     => ["12", "34"]
+*   splitSkipEmpty("|12|34",       "|")     => ["12", "34"]
+*   splitSkipEmpty("1234",         "|")     => ["1234"]
+*   splitSkipEmpty("",              ? )     => []
+*   splitSkipEmpty("1234",         "" )     => ["1", "2", "3", "4"]
+*   splitSkipEmpty("1|2|3|4|5",  "|", 2)    => ["1", "2", "3|4|5"]
+*   splitSkipEmpty("1|2|3|4|5",  "|", 0)    => ["1|2|3|4|5"]
+*   splitSkipEmpty("1||3|4|5",   "|", 2)    => ["1", "3|4|5"]
 *
 */
 
-[[nodiscard]] inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, std::string_view separator);
+[[nodiscard]] inline std::vector<std::string_view> splitSkipEmpty(std::string_view source, std::string_view separator);
+
+[[nodiscard]] inline std::vector<std::string_view> splitSkipEmpty(std::string_view source, std::string_view separator, size_t maxSplits);
+
+[[nodiscard]] inline std::vector<std::string_view> splitSkipEmpty(std::string_view source, char separator);
+
+[[nodiscard]] inline std::vector<std::string_view> splitSkipEmpty(std::string_view source, char separator, size_t maxSplits);
+
+
+
 
 /**
-* Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
-* If separator is not found in source a single-element list containing source is returned.
-* Empty Substrings are discarded.
-* 
-*   splitSkipEmptyParts("1|23|456|7", '|')  => ["1", "23", "456", "7"]
-*   splitSkipEmptyParts("12||34",     '|')  => ["12", "34"]
-*   splitSkipEmptyParts("12|34|",     '|')  => ["12", "34"]
-*   splitSkipEmptyParts("|12|34",     '|')  => ["12", "34"]
-*   splitSkipEmptyParts("1234",       '|')  => ["1234"]
-*   splitSkipEmptyParts("",            ? )  => []
+* Splits source into substrings wherever any of the separators occurs, and returns a list containing the substrings.
+* If none of the separators is found in source a single-element list containing source is returned.
+* The string will be splitted at most maxSplits times
+* Empty Substrings are kept.
 *
+*   splitAnyOfSkipEmpty("1|23#45",     "|#") => ["1", "23", "45"]
+*   splitAnyOfSkipEmpty("1|#23|45",    "|#") => ["1", "23", "45"]
+*   splitAnyOfSkipEmpty("1|23#45",       "") => ["1|23#45"]
+*   splitAnyOfSkipEmpty("1|23#45",      "#") => ["1|23", "45]
+*   splitAnyOfSkipEmpty("12345",       "|#") => ["12345"]
+*   splitAnyOfSkipEmpty("",              ? ) => [""]
+*   splitAnyOfSkipEmpty("1|23#4|5", "|#", 2) => ["1", "23", "4|5"]
+*/
+[[nodiscard]] inline std::vector<std::string_view> splitAnyOfSkipEmpty(std::string_view source, std::string_view separators);
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyOfSkipEmpty(std::string_view source, std::string_view separators, size_t maxSplits);
+
+
+/**
+* Splits source into substrings wherever any not of the separators occurs, and returns a list containing the substrings.
+* The string will be splitted at most maxSplits times
+* Empty Substrings are kept.
+*
+*   splitAnyButSkipEmpty("1|2#45",     "|#") => ["|", "#"]
+*   splitAnyButSkipEmpty("1|#",        "|#") => ["|#"]
+*   splitAnyButSkipEmpty("123",          "") => []
+*   splitAnyButSkipEmpty("12345", "1234567") => ["12345"]
+*   splitAnyButSkipEmpty("",             ? ) => [""]
+*   splitAnyButSkipEmpty("1|2#45",  "|#", 2) => ["|", "#45"]
 */
 
-[[nodiscard]] inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, char separator);
+[[nodiscard]] inline std::vector<std::string_view> splitAnyButSkipEmpty(std::string_view source, std::string_view separators);
+
+[[nodiscard]] inline std::vector<std::string_view> splitAnyButSkipEmpty(std::string_view source, std::string_view separators, size_t maxSplits);
+
+
 
 
 //#######################################################################################
@@ -374,7 +441,7 @@ template<typename T>
 *   stripEnd("abcxabc", "bacdefghi")  => "abcx"
 */
 
-[[nodiscard]] constexpr inline std::string_view stripEnd(std::string_view str, std::string_view stripChars);
+[[nodiscard]] constexpr inline std::string_view stripEnd(std::string_view str, std::string_view stripChars) noexcept;
 
 
 /**
@@ -388,7 +455,7 @@ template<typename T>
 *   stripStart("abcxabc", "bac")        => "xabc"
 *   stripStart("abcxabc", "bacdefghi")  => "xabc"
 */
-[[nodiscard]] constexpr inline std::string_view stripStart(std::string_view str, std::string_view stripChars);
+[[nodiscard]] constexpr inline std::string_view stripStart(std::string_view str, std::string_view stripChars) noexcept;
 
 
 /**
@@ -403,7 +470,7 @@ template<typename T>
 *   strip("abcxabc", "bacdefghi")  => "x"
 *   strip("abcxax",  "bacdefghi")  => "xax"
 */
-[[nodiscard]] constexpr inline std::string_view strip(std::string_view str, std::string_view stripChars);
+[[nodiscard]] constexpr inline std::string_view strip(std::string_view str, std::string_view stripChars) noexcept;
 
 
 //#######################################################################################
@@ -425,7 +492,7 @@ template<typename T>
 *   iStripEnd("abcxaBc", "bacdefghi")  => "abcx"
 */
 
-[[nodiscard]] constexpr inline std::string_view iStripEnd(std::string_view str, std::string_view stripChars);
+[[nodiscard]] constexpr inline std::string_view iStripEnd(std::string_view str, std::string_view stripChars) noexcept;
 
 
 /**
@@ -439,7 +506,7 @@ template<typename T>
 *   stripStart("aBcxabc", "bac")        => "xabc"
 *   stripStart("aBcxabc", "bacdefghi")  => "xabc"
 */
-[[nodiscard]] constexpr inline std::string_view iStripStart(std::string_view str, std::string_view stripChars);
+[[nodiscard]] constexpr inline std::string_view iStripStart(std::string_view str, std::string_view stripChars) noexcept;
 
 
 /**
@@ -454,7 +521,7 @@ template<typename T>
 *   strip("aBcxabC", "bacdefghi")  => "x"
 *   strip("aBcxax",  "bacdefghi")  => "xax"
 */
-[[nodiscard]] constexpr inline std::string_view iStrip(std::string_view str, std::string_view stripChars);
+[[nodiscard]] constexpr inline std::string_view iStrip(std::string_view str, std::string_view stripChars) noexcept;
 
 
 } // namespace STRINGUTILS_NAMESPACE

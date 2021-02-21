@@ -333,6 +333,13 @@ static constexpr inline size_t totalSizeHelper(const std::array<size_t, N>& arra
     }
     return totalSize;
 }
+template <typename T>
+std::vector<std::string> constructSingleElementVector(T&& arg) {
+    std::vector<std::string> vector;
+    vector.emplace_back(std::forward<T>(arg));
+    return vector;
+}
+
 
 
 constexpr inline char charToUpperCase(char c) noexcept
@@ -471,11 +478,6 @@ constexpr inline bool iEquals(const char* ptr1, const char* ptr2, size_t size) n
 }
 
 
-
-
-
-
-
 //TODO: benchmark 64 byte version (1 bit per char)
 
 class StringMatchHelper
@@ -535,7 +537,6 @@ constexpr inline StringMatchHelper generateStringMatchHelper(const char* const s
     matchHelper.mark(source, source + sourceSize);
     return matchHelper;
 }
-
 
 
 constexpr inline size_t find(const char* hayStack, const size_t haySize, const size_t startIndex, char needle) noexcept
@@ -679,7 +680,8 @@ constexpr size_t rFindAnyOf(const char* const hayStack, const size_t haySize, co
             {
                 return static_cast<size_t>(position - hayStack);
             }
-            if (position == hayStack) {
+            if (position == hayStack)
+            {
                 break;
             }
         }
@@ -712,7 +714,6 @@ constexpr size_t rFindAnyBut(const char* const hayStack, const size_t haySize, c
     }
     return INDEX_NOT_FOUND;
 }
-
 
 
 constexpr inline size_t iFind(const char* const hayStack, const size_t haySize, const size_t startIndex, const char needle) noexcept
@@ -801,12 +802,6 @@ constexpr size_t iFindAnyBut(const char* const hayStack, const size_t haySize, c
 }
 
 
-
-
-
-
-
-
 constexpr inline size_t irFind(const char* const hayStack, const size_t haySize, const size_t startIndex, const char needle) noexcept
 {
     if (startIndex < haySize)
@@ -845,8 +840,6 @@ constexpr inline size_t irFind(const char* const hayStack, const size_t haySize,
     }
     return INDEX_NOT_FOUND;
 }
-
-
 
 
 /**
@@ -899,18 +892,6 @@ constexpr size_t irFindAnyBut(const char* const hayStack, const size_t haySize, 
     }
     return INDEX_NOT_FOUND;
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 template<typename Delimiter>
@@ -998,7 +979,69 @@ static inline std::string concat(Args&&... args)
 }
 
 
-inline std::vector<std::string> splitWithEmptySeparatorKeepEmptyParts(std::string_view source)
+inline std::vector<std::string_view> splitNoSeparator(std::string_view source)
+{
+    const size_t sourceLength = source.length();
+    std::vector<std::string_view> list(sourceLength + 1);
+    for (size_t j = 0; j < sourceLength; ++j)
+    {
+        list[j + 1] = std::string_view(source.data() + j, 1);
+    }
+    return list;
+}
+
+inline std::vector<std::string_view> splitNoSeparator(std::string_view source, size_t maxSplits)
+{
+    const size_t sourceLength = source.length();
+    maxSplits = std::min(maxSplits, sourceLength);
+    if (maxSplits == 0)
+    {
+        return std::vector<std::string_view>(1, source);
+    }
+
+    std::vector<std::string_view> list(maxSplits + 1);
+    list[0] = std::string_view(source.data(), 0); // we want this empty string_view be in range of source
+    for (size_t j = 0; j < maxSplits - 1; ++j)
+    {
+        list[j + 1] = std::string_view(source.data() + j, 1);
+    }
+    list[maxSplits] = std::string_view(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
+    return list;
+}
+
+inline std::vector<std::string_view> splitNoSeparatorSkipEmpty(std::string_view source)
+{
+    const size_t sourceLength = source.length();
+    std::vector<std::string_view> list(sourceLength);
+    for (size_t j = 0; j < sourceLength; ++j)
+    {
+        list[j] = std::string_view(source.data() + j, 1);
+    }
+    return list;
+}
+
+
+inline std::vector<std::string_view> splitNoSeparatorSkipEmpty(std::string_view source, size_t maxSplits)
+{
+    const size_t sourceLength = source.length();
+    maxSplits = std::min(sourceLength, maxSplits);
+    if (maxSplits == 0)
+    {
+        return std::vector<std::string_view>(1, source);
+    }
+    std::vector<std::string_view> list(maxSplits);
+    for (size_t j = 0; j < maxSplits - 1; ++j)
+    {
+        list[j] = std::string_view(source.data() + j, 1);
+    }
+    list[maxSplits - 1] = std::string_view(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
+    return list;
+}
+
+
+
+
+inline std::vector<std::string> splitNoSeparatorCopy(std::string_view source)
 {
     const size_t sourceLength = source.length();
     std::vector<std::string> list(sourceLength + 1, std::string(1, '?'));
@@ -1010,7 +1053,25 @@ inline std::vector<std::string> splitWithEmptySeparatorKeepEmptyParts(std::strin
     return list;
 }
 
-inline std::vector<std::string> splitWithEmptySeparatorSkipEmptyParts(std::string_view source)
+inline std::vector<std::string> splitNoSeparatorCopy(std::string_view source, size_t maxSplits)
+{
+    const size_t sourceLength = source.length();
+    maxSplits = std::min(maxSplits, sourceLength);
+    if (maxSplits == 0)
+    {
+        return constructSingleElementVector(source);
+    }
+    std::vector<std::string> list(maxSplits + 1, std::string(1, '?'));
+    list[0].clear();
+    for (size_t j = 0; j < maxSplits - 1; ++j)
+    {
+        list[j + 1][0] = source[j];
+    }
+    list[maxSplits] = std::string_view(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
+    return list;
+}
+
+inline std::vector<std::string> splitNoSeparatorSkipEmptyCopy(std::string_view source)
 {
     const size_t sourceLength = source.length();
     std::vector<std::string> list(sourceLength, std::string(1, '?'));
@@ -1021,101 +1082,25 @@ inline std::vector<std::string> splitWithEmptySeparatorSkipEmptyParts(std::strin
     return list;
 }
 
-inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, std::string_view separator)
+
+inline std::vector<std::string> splitNoSeparatorSkipEmptyCopy(std::string_view source, size_t maxSplits)
 {
-    const size_t separatorSize = separator.size();
-    if (separatorSize == 0)
+    const size_t sourceLength = source.length();
+    maxSplits = std::min(sourceLength, maxSplits);
+    if (maxSplits == 0)
     {
-        return splitWithEmptySeparatorKeepEmptyParts(source);
+        return constructSingleElementVector(source);
     }
-    std::vector<std::string> list;
-    for (;;)
-    {
-        const size_t end = source.find(separator, 0);
-        if (end == INDEX_NOT_FOUND)
-        {
-            break;
-        }
 
-        list.emplace_back(source.data(), end);
-        source.remove_prefix(end + separatorSize);
+    std::vector<std::string> list(maxSplits, std::string(1, '?'));
+    for (size_t j = 0; j < maxSplits - 1; ++j)
+    {
+        list[j][0] = source[j];
     }
-    list.emplace_back(source);
+    list[maxSplits - 1] = std::string_view(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
     return list;
-}
+ }
 
-
-inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, std::string_view separator)
-{
-    const size_t separatorSize = separator.size();
-    if (separatorSize == 0)
-    {
-        return splitWithEmptySeparatorSkipEmptyParts(source);
-    }
-    std::vector<std::string> list;
-    for (;;)
-    {
-        const size_t end = source.find(separator, 0);
-        if (end == INDEX_NOT_FOUND)
-        {
-            break;
-        }
-
-        if (end != 0)
-        {
-            list.emplace_back(source.data(), end);
-        }
-        source.remove_prefix(end + separatorSize);
-    }
-    if (!source.empty())
-    {
-        list.emplace_back(source);
-    }
-    return list;
-}
-
-inline std::vector<std::string> splitKeepEmptyParts(std::string_view source, char separator)
-{
-    std::vector<std::string> list;
-    for (;;)
-    {
-        const size_t end = source.find(separator, 0);
-        if (end == INDEX_NOT_FOUND)
-        {
-            break;
-        }
-
-        list.emplace_back(source.data(), end);
-        source.remove_prefix(end + 1);
-    }
-    list.emplace_back(source);
-    return list;
-}
-
-
-inline std::vector<std::string> splitSkipEmptyParts(std::string_view source, char separator)
-{
-    std::vector<std::string> list;
-    for (;;)
-    {
-        const size_t end = source.find(separator, 0);
-        if (end == INDEX_NOT_FOUND)
-        {
-            break;
-        }
-
-        if (end != 0)
-        {
-            list.emplace_back(source.data(), end);
-        }
-        source.remove_prefix(end + 1);
-    }
-    if (!source.empty())
-    {
-        list.emplace_back(source);
-    }
-    return list;
-}
 
 
 } // namespace Detail
