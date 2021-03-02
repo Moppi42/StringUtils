@@ -133,6 +133,15 @@ template<typename... Args>
 
 
 /**
+Helper class to avoid dynamic memory allocation of split functions
+maxSplits indicates how many splits to perform at most resulting in at most maxSplits + 1 elements
+*/
+
+template<class StringOrStringView, size_t maxSplits>
+struct SplitResult;
+
+
+/**
 * Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
 * If separator is not found in source a single-element list containing source is returned.
 * The string will be splitted at most maxSplits times
@@ -162,6 +171,17 @@ template<typename... Args>
 [[nodiscard]] inline std::vector<std::string_view> split(std::string_view source, char separator, size_t maxSplits);
 
 
+template<size_t maxSplits>
+[[nodiscard]] inline SplitResult<std::string_view, maxSplits> split(std::string_view source, std::string_view separator);
+
+template<size_t maxSplits>
+[[nodiscard]] inline SplitResult<std::string_view, maxSplits> split(std::string_view source, char separator);
+
+
+/*template<size_t maxSplits>
+[[nodiscard]] constexpr inline SplitResult<maxSplits> split(std::string_view source, char separator);*/
+
+
 /**
 * Splits source into substrings wherever any of the separators occurs, and returns a list containing the substrings.
 * If none of the separators is found in source a single-element list containing source is returned.
@@ -180,6 +200,9 @@ template<typename... Args>
 
 [[nodiscard]] inline std::vector<std::string_view> splitAnyOf(std::string_view source, std::string_view separators, size_t maxSplits);
 
+template<size_t maxSplits>
+[[nodiscard]] inline SplitResult<std::string_view, maxSplits> splitAnyOf(std::string_view source, std::string_view separators);
+
 
 /**
 * Splits source into substrings wherever any not of the separators occurs, and returns a list containing the substrings.
@@ -191,12 +214,15 @@ template<typename... Args>
 *   splitAnyBut("123",          "") => ["", "", "", ""]
 *   splitAnyBut("12345", "1234567") => ["12345"]
 *   splitAnyBut("",             ? ) => [""]
-*   splitAnyBut("1|2#45",  "|#", 2) => ["", "|", "#45"]
+*   splitAnyBut("|1#2|#", "123", 2) => ["", "1", "2|#"]
 */
 
 [[nodiscard]] inline std::vector<std::string_view> splitAnyBut(std::string_view source, std::string_view separators);
 
 [[nodiscard]] inline std::vector<std::string_view> splitAnyBut(std::string_view source, std::string_view separators, size_t maxSplits);
+
+template<size_t maxSplits>
+[[nodiscard]] inline SplitResult<std::string_view, maxSplits> splitAnyBut(std::string_view source, std::string_view separators);
 
 /**
 * Splits source into substrings wherever the separator occurs, and returns a list containing the substrings.
@@ -227,48 +253,52 @@ template<typename... Args>
 
 [[nodiscard]] inline std::vector<std::string_view> splitSkipEmpty(std::string_view source, char separator, size_t maxSplits);
 
+template<size_t maxSplits>
+[[nodiscard]] inline SplitResult<std::string_view, maxSplits> splitSkipEmpty(std::string_view source, std::string_view separator);
 
+template<size_t maxSplits>
+[[nodiscard]] inline SplitResult<std::string_view, maxSplits> splitSkipEmpty(std::string_view source, char separator);
 
 
 /**
 * Splits source into substrings wherever any of the separators occurs, and returns a list containing the substrings.
 * If none of the separators is found in source a single-element list containing source is returned.
 * The string will be splitted at most maxSplits times
-* Empty Substrings are kept.
+* Empty Substrings are discarded.
 *
 *   splitAnyOfSkipEmpty("1|23#45",     "|#") => ["1", "23", "45"]
 *   splitAnyOfSkipEmpty("1|#23|45",    "|#") => ["1", "23", "45"]
 *   splitAnyOfSkipEmpty("1|23#45",       "") => ["1|23#45"]
 *   splitAnyOfSkipEmpty("1|23#45",      "#") => ["1|23", "45]
 *   splitAnyOfSkipEmpty("12345",       "|#") => ["12345"]
-*   splitAnyOfSkipEmpty("",              ? ) => [""]
+*   splitAnyOfSkipEmpty("",              ? ) => []
 *   splitAnyOfSkipEmpty("1|23#4|5", "|#", 2) => ["1", "23", "4|5"]
 */
 [[nodiscard]] inline std::vector<std::string_view> splitAnyOfSkipEmpty(std::string_view source, std::string_view separators);
 
 [[nodiscard]] inline std::vector<std::string_view> splitAnyOfSkipEmpty(std::string_view source, std::string_view separators, size_t maxSplits);
 
-
+template<size_t maxSplits>
+[[nodiscard]] inline SplitResult<std::string_view, maxSplits> splitAnyOfSkipEmpty(std::string_view source, std::string_view separators);
 /**
 * Splits source into substrings wherever any not of the separators occurs, and returns a list containing the substrings.
 * The string will be splitted at most maxSplits times
-* Empty Substrings are kept.
+* Empty Substrings are discarded.
 *
 *   splitAnyButSkipEmpty("1|2#45",     "|#") => ["|", "#"]
 *   splitAnyButSkipEmpty("1|#",        "|#") => ["|#"]
 *   splitAnyButSkipEmpty("123",          "") => []
 *   splitAnyButSkipEmpty("12345", "1234567") => ["12345"]
-*   splitAnyButSkipEmpty("",             ? ) => [""]
-*   splitAnyButSkipEmpty("1|2#45",  "|#", 2) => ["|", "#45"]
+*   splitAnyButSkipEmpty("",             ? ) => []
+*   splitAnyButSkipEmpty("|1#2|#", "123", 2) => ["1", "2|#"]
 */
 
 [[nodiscard]] inline std::vector<std::string_view> splitAnyButSkipEmpty(std::string_view source, std::string_view separators);
 
 [[nodiscard]] inline std::vector<std::string_view> splitAnyButSkipEmpty(std::string_view source, std::string_view separators, size_t maxSplits);
 
-
-
-
+template<size_t maxSplits>
+[[nodiscard]] inline SplitResult<std::string_view, maxSplits> splitAnyButSkipEmpty(std::string_view source, std::string_view separators);
 //#######################################################################################
 //
 //                                  Find

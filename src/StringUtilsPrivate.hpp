@@ -106,6 +106,15 @@ static_assert(std::string::npos == std::string_view::npos, "Inconsistent values 
 
 
 namespace STRINGUTILS_NAMESPACE {
+template<class StringOrStringView, size_t maxSplits>
+struct SplitResult
+{
+    std::array<StringOrStringView, maxSplits + 1> parts;
+    size_t size;
+};
+
+
+
 namespace Detail {
 /**
 * Helper for is_string_convertible
@@ -333,13 +342,15 @@ static constexpr inline size_t totalSizeHelper(const std::array<size_t, N>& arra
     }
     return totalSize;
 }
-template <typename T>
-std::vector<std::string> constructSingleElementVector(T&& arg) {
-    std::vector<std::string> vector;
-    vector.emplace_back(std::forward<T>(arg));
+
+
+template<class StringOrStringView, class StringView>
+inline std::vector<StringOrStringView> constructSingleElementVector(const StringView arg)
+{
+    std::vector<StringOrStringView> vector;
+    vector.emplace_back(arg);
     return vector;
 }
-
 
 
 constexpr inline char charToUpperCase(char c) noexcept
@@ -979,69 +990,52 @@ static inline std::string concat(Args&&... args)
 }
 
 
-inline std::vector<std::string_view> splitNoSeparator(std::string_view source)
+template<class StringOrStringView, typename std::enable_if<std::is_same<StringOrStringView, std::string>::value, bool>::type = true>
+inline void assign(StringOrStringView& str, const char* ptr, const size_t size)
+{
+    str.assign(ptr, size);
+}
+template<class StringOrStringView, typename std::enable_if<std::is_same<StringOrStringView, std::string_view>::value, bool>::type = true>
+constexpr inline void assign(StringOrStringView& str, const char* ptr, const size_t size)
+{
+    str = std::string_view(ptr, size);
+}
+
+
+template<class StringOrStringView, class StringView, typename std::enable_if<std::is_same<StringOrStringView, StringView>::value, bool>::type = true>
+inline std::vector<StringView> splitNoSeparator(StringView source)
 {
     const size_t sourceLength = source.length();
-    std::vector<std::string_view> list(sourceLength + 1);
+    std::vector<StringView> list(sourceLength + 1);
     for (size_t j = 0; j < sourceLength; ++j)
     {
-        list[j + 1] = std::string_view(source.data() + j, 1);
+        list[j + 1] = StringView(source.data() + j, 1);
     }
     return list;
 }
 
-inline std::vector<std::string_view> splitNoSeparator(std::string_view source, size_t maxSplits)
+template<class StringOrStringView, class StringView, typename std::enable_if<std::is_same<StringOrStringView, StringView>::value, bool>::type = true>
+inline std::vector<StringView> splitNoSeparator(StringView source, size_t maxSplits)
 {
     const size_t sourceLength = source.length();
     maxSplits = std::min(maxSplits, sourceLength);
     if (maxSplits == 0)
     {
-        return std::vector<std::string_view>(1, source);
+        return std::vector<StringView>(1, source);
     }
 
-    std::vector<std::string_view> list(maxSplits + 1);
-    list[0] = std::string_view(source.data(), 0); // we want this empty string_view be in range of source
+    std::vector<StringOrStringView> list(maxSplits + 1);
+    list[0] = StringOrStringView(source.data(), 0); // we want this empty string_view be in range of source
     for (size_t j = 0; j < maxSplits - 1; ++j)
     {
-        list[j + 1] = std::string_view(source.data() + j, 1);
+        list[j + 1] = StringView(source.data() + j, 1);
     }
-    list[maxSplits] = std::string_view(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
+    list[maxSplits] = StringView(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
     return list;
 }
 
-inline std::vector<std::string_view> splitNoSeparatorSkipEmpty(std::string_view source)
-{
-    const size_t sourceLength = source.length();
-    std::vector<std::string_view> list(sourceLength);
-    for (size_t j = 0; j < sourceLength; ++j)
-    {
-        list[j] = std::string_view(source.data() + j, 1);
-    }
-    return list;
-}
-
-
-inline std::vector<std::string_view> splitNoSeparatorSkipEmpty(std::string_view source, size_t maxSplits)
-{
-    const size_t sourceLength = source.length();
-    maxSplits = std::min(sourceLength, maxSplits);
-    if (maxSplits == 0)
-    {
-        return std::vector<std::string_view>(1, source);
-    }
-    std::vector<std::string_view> list(maxSplits);
-    for (size_t j = 0; j < maxSplits - 1; ++j)
-    {
-        list[j] = std::string_view(source.data() + j, 1);
-    }
-    list[maxSplits - 1] = std::string_view(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
-    return list;
-}
-
-
-
-
-inline std::vector<std::string> splitNoSeparatorCopy(std::string_view source)
+template<class StringOrStringView, class StringView, typename std::enable_if<std::is_same<StringOrStringView, std::string>::value, bool>::type = true>
+inline std::vector<std::string> splitNoSeparator(StringView source)
 {
     const size_t sourceLength = source.length();
     std::vector<std::string> list(sourceLength + 1, std::string(1, '?'));
@@ -1053,13 +1047,14 @@ inline std::vector<std::string> splitNoSeparatorCopy(std::string_view source)
     return list;
 }
 
-inline std::vector<std::string> splitNoSeparatorCopy(std::string_view source, size_t maxSplits)
+template<class StringOrStringView, class StringView, typename std::enable_if<std::is_same<StringOrStringView, std::string>::value, bool>::type = true>
+inline std::vector<std::string> splitNoSeparator(StringView source, size_t maxSplits)
 {
     const size_t sourceLength = source.length();
     maxSplits = std::min(maxSplits, sourceLength);
     if (maxSplits == 0)
     {
-        return constructSingleElementVector(source);
+        return constructSingleElementVector<std::string>(source);
     }
     std::vector<std::string> list(maxSplits + 1, std::string(1, '?'));
     list[0].clear();
@@ -1067,14 +1062,89 @@ inline std::vector<std::string> splitNoSeparatorCopy(std::string_view source, si
     {
         list[j + 1][0] = source[j];
     }
-    list[maxSplits] = std::string_view(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
+    list[maxSplits].assign(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
     return list;
 }
 
-inline std::vector<std::string> splitNoSeparatorSkipEmptyCopy(std::string_view source)
+
+template<class StringOrStringView, class StringView, size_t maxSplits, typename std::enable_if<std::is_same<StringOrStringView, StringView>::value, bool>::type = true>
+constexpr inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitNoSeparator(StringView source)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    const size_t sourceLength = source.length();
+    const size_t totalSplits = std::min(maxSplits, sourceLength);
+    result.size = totalSplits + 1;
+    if (totalSplits == 0)
+    {
+        result.parts[0] = source;
+        return result;
+    }
+
+    result.parts[0] = StringView(source.data(), 0); // we want first empty string_view be in range of source
+    for (size_t j = 0; j < totalSplits - 1; ++j)
+    {
+        result.parts[j + 1] = StringView(source.data() + j, 1);
+    }
+    result.parts[totalSplits] = StringView(source.data() + totalSplits - 1, sourceLength + 1 - totalSplits);
+    return result;
+}
+
+template<class StringOrStringView, class StringView, size_t maxSplits, typename std::enable_if<std::is_same<StringOrStringView, std::string>::value, bool>::type = true>
+inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitNoSeparator(StringView source)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    const size_t sourceLength = source.length();
+    const size_t totalSplits = std::min(maxSplits, sourceLength);
+    result.size = totalSplits + 1;
+    if (totalSplits == 0)
+    {
+        result.parts[0].assign(source.data(), source.size());
+        return result;
+    }
+    for (size_t j = 0; j < totalSplits - 1; ++j)
+    {
+        result.parts[j + 1].assign(source.data() + j, 1);
+    }
+    result.parts[totalSplits].assign(source.data() + totalSplits - 1, sourceLength + 1 - totalSplits);
+    return result;
+}
+
+
+template<class StringOrStringView, class StringView, typename std::enable_if<std::is_same<StringOrStringView, StringView>::value, bool>::type = true>
+inline std::vector<StringView> splitNoSeparatorSkipEmpty(StringView source)
 {
     const size_t sourceLength = source.length();
-    std::vector<std::string> list(sourceLength, std::string(1, '?'));
+    std::vector<StringView> list(sourceLength);
+    for (size_t j = 0; j < sourceLength; ++j)
+    {
+        list[j] = StringView(source.data() + j, 1);
+    }
+    return list;
+}
+
+template<class StringOrStringView, class StringView, typename std::enable_if<std::is_same<StringOrStringView, StringView>::value, bool>::type = true>
+inline std::vector<StringView> splitNoSeparatorSkipEmpty(StringView source, size_t maxSplits)
+{
+    const size_t sourceLength = source.length();
+    maxSplits = std::min(sourceLength, maxSplits);
+    if (maxSplits == 0)
+    {
+        return std::vector<StringView>(1, source);
+    }
+    std::vector<StringView> list(maxSplits);
+    for (size_t j = 0; j < maxSplits - 1; ++j)
+    {
+        list[j] = StringView(source.data() + j, 1);
+    }
+    list[maxSplits - 1] = StringView(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
+    return list;
+}
+
+template<class StringOrStringView, class StringView, typename std::enable_if<std::is_same<StringOrStringView, std::string>::value, bool>::type = true>
+inline std::vector<StringOrStringView> splitNoSeparatorSkipEmpty(StringView source)
+{
+    const size_t sourceLength = source.length();
+    std::vector<StringOrStringView> list(sourceLength, std::string(1, '?'));
     for (size_t j = 0; j < sourceLength; ++j)
     {
         list[j][0] = source[j];
@@ -1082,25 +1152,679 @@ inline std::vector<std::string> splitNoSeparatorSkipEmptyCopy(std::string_view s
     return list;
 }
 
-
-inline std::vector<std::string> splitNoSeparatorSkipEmptyCopy(std::string_view source, size_t maxSplits)
+template<class StringOrStringView, class StringView, typename std::enable_if<std::is_same<StringOrStringView, std::string>::value, bool>::type = true>
+inline std::vector<StringOrStringView> splitNoSeparatorSkipEmpty(StringView source, size_t maxSplits)
 {
     const size_t sourceLength = source.length();
     maxSplits = std::min(sourceLength, maxSplits);
     if (maxSplits == 0)
     {
-        return constructSingleElementVector(source);
+        return constructSingleElementVector<std::string>(source);
     }
 
-    std::vector<std::string> list(maxSplits, std::string(1, '?'));
+    std::vector<StringOrStringView> list(maxSplits, std::string(1, '?'));
     for (size_t j = 0; j < maxSplits - 1; ++j)
     {
         list[j][0] = source[j];
     }
-    list[maxSplits - 1] = std::string_view(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
+    list[maxSplits - 1].assign(source.data() + maxSplits - 1, sourceLength + 1 - maxSplits);
     return list;
- }
+}
 
+
+template<class StringOrStringView, class StringView, size_t maxSplits, typename std::enable_if<std::is_same<StringOrStringView, StringView>::value, bool>::type = true>
+constexpr inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitNoSeparatorSkipEmpty(StringView source)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    const size_t sourceLength = source.length();
+    const size_t totalSplits = std::min(maxSplits, sourceLength);
+    result.size = totalSplits;
+    if (totalSplits == 0)
+    {
+        result.parts[0] = source;
+        return result;
+    }
+
+    for (size_t j = 0; j < totalSplits - 1; ++j)
+    {
+        result.parts[j] = StringView(source.data() + j, 1);
+    }
+    result.parts[totalSplits - 1] = StringView(source.data() + totalSplits - 1, sourceLength + 1 - totalSplits);
+    return result;
+}
+
+template<class StringOrStringView, class StringView, size_t maxSplits, typename std::enable_if<std::is_same<StringOrStringView, std::string>::value, bool>::type = true>
+inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitNoSeparatorSkipEmpty(StringView source)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    const size_t sourceLength = source.length();
+    const size_t totalSplits = std::min(maxSplits, sourceLength);
+    result.size = totalSplits + 1;
+    if (totalSplits == 0)
+    {
+        result.parts[0].assign(source.data(), source.size());
+        return result;
+    }
+    for (size_t j = 0; j < totalSplits - 1; ++j)
+    {
+        result.parts[j].assign(source.data() + j, 1);
+    }
+    result.parts[totalSplits].assign(source.data() + totalSplits - 1, sourceLength + 1 - totalSplits);
+    return result;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> split(StringView source, const StringView separator)
+{
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparator<StringOrStringView>(source);
+    }
+    std::vector<StringOrStringView> list;
+    for (;;)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + separatorSize);
+    }
+    list.emplace_back(source.data(), source.size());
+    return list;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> split(StringView source, const char separator)
+{
+    std::vector<StringOrStringView> list;
+    for (;;)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source.data(), source.size());
+    return list;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> split(StringView source, const StringView separator, const size_t maxSplits)
+{
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparator<StringOrStringView>(source, maxSplits);
+    }
+    std::vector<StringOrStringView> list;
+
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + separatorSize);
+    }
+    list.emplace_back(source.data(), source.size());
+    return list;
+}
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> split(StringView source, const char separator, const size_t maxSplits)
+{
+    std::vector<StringOrStringView> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source.data(), source.size());
+    return list;
+}
+
+
+template<class StringOrStringView, class StringView, size_t maxSplits>
+[[nodiscard]] inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> split(StringView source, const StringView separator)
+{
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparator<StringOrStringView, maxSplits>(source);
+    }
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    size_t splits = 0;
+
+    for (; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        assign(result.parts[splits], source.data(), end);
+        source.remove_prefix(end + separatorSize);
+    }
+    assign(result.parts[splits], source.data(), source.size());
+    result.size = splits + 1;
+    return result;
+}
+
+
+template<class StringOrStringView, class StringView, size_t maxSplits>
+[[nodiscard]] inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> split(StringView source, const char separator)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    size_t splits = 0;
+    for (; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+        assign(result.parts[splits], source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    assign(result.parts[splits], source.data(), source.size());
+    result.size = splits + 1;
+    return result;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitAnyOf(StringView source, const StringView separators)
+{
+    if (separators.size() == 0)
+    {
+        return constructSingleElementVector<StringOrStringView>(source);
+    }
+    std::vector<StringOrStringView> list;
+    for (;;)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source.data(), source.size());
+    return list;
+}
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitAnyOf(std::string_view source, const std::string_view separators, const size_t maxSplits)
+{
+    if (separators.size() == 0)
+    {
+        return constructSingleElementVector<StringOrStringView>(source);
+    }
+    std::vector<StringOrStringView> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source.data(), source.size());
+    return list;
+}
+
+
+template<class StringOrStringView, class StringView, size_t maxSplits>
+[[nodiscard]] inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitAnyOf(std::string_view source, const std::string_view separators)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    if (separators.size() == 0)
+    {
+        assign(result.parts[0], source.data(), source.size());
+        result.size = 1;
+        return result;
+    }
+    size_t splits = 0;
+    for (; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+        assign(result.parts[splits], source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    assign(result.parts[splits], source.data(), source.size());
+    return result;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitAnyBut(StringView source, const StringView separators)
+{
+    std::vector<StringOrStringView> list;
+    for (;;)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source.data(), source.size());
+    return list;
+}
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitAnyBut(StringView source, const StringView separators, const size_t maxSplits)
+{
+    std::vector<StringOrStringView> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        list.emplace_back(source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    list.emplace_back(source.data(), source.size());
+    return list;
+}
+
+
+template<class StringOrStringView, class StringView, size_t maxSplits>
+[[nodiscard]] inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitAnyBut(StringView source, const StringView separators)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    size_t splits = 0;
+    for (; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+        assign(result.parts[splits], source.data(), end);
+        source.remove_prefix(end + 1);
+    }
+    assign(result.parts[splits], source.data(), source.size());
+    return result;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitSkipEmpty(StringView source, const StringView separator)
+{
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparatorSkipEmpty<StringOrStringView>(source);
+    }
+    std::vector<StringOrStringView> list;
+    for (;;)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + separatorSize);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source.data(), source.size());
+    }
+    return list;
+}
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitSkipEmpty(StringView source, const char separator)
+{
+    std::vector<StringOrStringView> list;
+    for (;;)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source.data(), source.size());
+    }
+    return list;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitSkipEmpty(StringView source, const StringView separator, const size_t maxSplits)
+{
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparatorSkipEmpty<StringOrStringView>(source);
+    }
+    std::vector<StringOrStringView> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + separatorSize);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source.data(), source.size());
+    }
+    return list;
+}
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitSkipEmpty(StringView source, const char separator, const size_t maxSplits)
+{
+    std::vector<StringOrStringView> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source.data(), source.size());
+    }
+    return list;
+}
+
+template<class StringOrStringView, class StringView, size_t maxSplits>
+[[nodiscard]] inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitSkipEmpty(StringView source, const StringView separator)
+{
+    const size_t separatorSize = separator.size();
+    if (separatorSize == 0)
+    {
+        return Detail::splitNoSeparatorSkipEmpty<StringOrStringView, maxSplits>(source);
+    }
+
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    size_t position = 0;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+        if (end != 0)
+        {
+            assign(result.parts[position++], source.data(), end);
+        }
+        source.remove_prefix(end + separatorSize);
+    }
+    if (!source.empty())
+    {
+        assign(result.parts[position++], source.data(), source.size());
+    }
+    result.size = position;
+    return result;
+}
+
+template<class StringOrStringView, class StringView, size_t maxSplits>
+[[nodiscard]] inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitSkipEmpty(StringView source, const char separator)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    size_t position = 0;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find(separator, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+        if (end != 0)
+        {
+            assign(result.parts[position++], source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        assign(result.parts[position++], source.data(), source.size());
+    }
+    result.size = position;
+    return result;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitAnyOfSkipEmpty(StringView source, const StringView separators)
+{
+    if (separators.size() == 0)
+    {
+        return constructSingleElementVector<StringOrStringView>(source);
+    }
+    std::vector<StringOrStringView> list;
+    for (;;)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source.data(), source.size());
+    }
+    return list;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitAnyOfSkipEmpty(StringView source, const StringView separators, const size_t maxSplits)
+{
+    if (separators.size() == 0)
+    {
+        return constructSingleElementVector<StringOrStringView>(source);
+    }
+    std::vector<StringOrStringView> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source.data(), source.size());
+    }
+    return list;
+}
+
+
+template<class StringOrStringView, class StringView, size_t maxSplits>
+[[nodiscard]] inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitAnyOfSkipEmpty(StringView source, const StringView separators)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    if (separators.size() == 0)
+    {
+        assign(result.parts[0], source.data(), source.size());
+        result.size = 1;
+        return result;
+    }
+    size_t position = 0;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            assign(result.parts[position++], source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        assign(result.parts[position++], source.data(), source.size());
+    }
+    result.size = position;
+    return result;
+}
+
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitAnyButSkipEmpty(StringView source, const StringView separators)
+{
+    std::vector<StringOrStringView> list;
+    for (;;)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source.data(), source.size());
+    }
+    return list;
+}
+
+template<class StringOrStringView, class StringView>
+[[nodiscard]] inline std::vector<StringOrStringView> splitAnyButSkipEmpty(StringView source, const StringView separators, const size_t maxSplits)
+{
+    std::vector<StringOrStringView> list;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            list.emplace_back(source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        list.emplace_back(source.data(), source.size());
+    }
+    return list;
+}
+
+template<class StringOrStringView, class StringView, size_t maxSplits>
+[[nodiscard]] inline STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> splitAnyButSkipEmpty(StringView source, const StringView separators)
+{
+    STRINGUTILS_NAMESPACE::SplitResult<StringOrStringView, maxSplits> result;
+    size_t position = 0;
+    for (size_t splits = 0; splits < maxSplits; ++splits)
+    {
+        const size_t end = source.find_first_not_of(separators, 0);
+        if (end == INDEX_NOT_FOUND)
+        {
+            break;
+        }
+
+        if (end != 0)
+        {
+            assign(result.parts[position++], source.data(), end);
+        }
+        source.remove_prefix(end + 1);
+    }
+    if (!source.empty())
+    {
+        assign(result.parts[position++], source.data(), source.size());
+    }
+    result.size = position;
+    return result;
+}
 
 
 } // namespace Detail
